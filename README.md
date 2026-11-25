@@ -156,11 +156,13 @@ menu.show();
   hidden: false,
   danger: false,
   className: '',
+  element: null,
+  elementRole: 'none',
   onClick: (item, event, instance) => {}
 }
 ```
 
-項目には `divider: true` または `group: '見出し'` を指定できます。`html` は HTML 文字列をそのまま挿入するため、信頼できる内容だけを指定してください。`element` には `HTMLElement` を渡せます。ノードはメニュー内へ移動し、`destroy()` 時に元の親へは戻りません。また、この項目にはライブラリのクリックハンドラーを付けないため、フォームやボタンの既定動作を妨げません。`checked` は `.is-checked` と `aria-checked` に反映されます。`id` が一致し、新しい項目で `checked` が省略された場合は、既存の checked 状態を引き継ぎます。
+項目には `divider: true` または `group: '見出し'` を指定できます。`html` は HTML 文字列をそのまま挿入するため、信頼できる内容だけを指定してください。`element` には `HTMLElement` を渡せます。ノードはメニュー内へ移動し、`destroy()` 時に元の親へは戻りません。要素項目の `<li>` は既定で `role="none"` になり、`elementRole` で上書きできます。要素内のリンク・ボタンなどは通常のクリック動作を保ち、キーボードでもフォーカス・活性化できます。`closeOnSelect` が有効ならクリック後にメニューを閉じますが、既定動作は抑止しません。表示中に `setItems()` で再描画したとき、フォーカス中の項目に同じ `id` があればフォーカスとスクロール位置を維持します。IDがない、または更新後に見つからない場合はメニュー本体へフォーカスを移します。`checked` は `.is-checked` と `aria-checked` に反映されます。`id` が一致し、新しい項目で `checked` が省略された場合は、既存の checked 状態を引き継ぎます。
 
 `customContent` の既定 role は `dialog` です。表示時は items なら最初の有効項目、customContent なら最初のフォーカス可能な要素へフォーカスします。dialog 内の `Tab` はフォーカスを内部に保ち、menu の `Tab` は閉じてトリガーへ戻ります。`Escape` でも閉じてフォーカスを戻します。
 
@@ -214,7 +216,7 @@ new PopMenu('#share', {
 });
 ```
 
-`presentation: 'sheet'` は明示指定で有効になり、既存の popover 表示は変わりません。シートは画面下部に固定され、長い内容はスクロールバーを表示せずにシート内でスクロールします。上部のハンドルはスクロール中も固定されます。カスタム内容では、閉じるボタンなど固定したい要素自身に `pm-sheet-sticky` クラスを指定できます。タイトルなど他の内容は通常どおりスクロールします。表示時は下からスライドしてフェードインし、閉じる時は下へスライドしてフェードアウトします。`prefers-reduced-motion` が有効な環境ではアニメーションを抑えます。既定の背景オーバーレイはクリックで閉じ、上部ハンドルを下へドラッグしても閉じられます。`backdrop` と `swipeToDismiss` は個別に無効化できます。
+`presentation: 'sheet'` は明示指定で有効になり、既存の popover 表示形式は変わりません。popover は開くときに短くフェード・スケールし、sheet は画面下部に固定され、長い内容はスクロールバーを表示せずにシート内でスクロールします。上部のハンドルはスクロール中も固定されます。カスタム内容では、閉じるボタンなど固定したい要素自身に `pm-sheet-sticky` クラスを指定できます。タイトルなど他の内容は通常どおりスクロールします。sheet は表示時に下からスライドしてフェードインし、閉じる時は下へスライドしてフェードアウトします。`prefers-reduced-motion` が有効な環境ではアニメーションを抑えます。既定の背景オーバーレイはクリックで閉じ、上部ハンドルを下へドラッグしても閉じられます。`backdrop` と `swipeToDismiss` は個別に無効化できます。
 
 `sheet` は既定でスクロールロックと背景の `inert` 化を行い、items を使う場合もモーダルダイアログとして扱います。上部ハンドルはキーボードでフォーカスでき、Enter / Space で閉じられます。`detents: ['half', 'full']` のように高さ候補を指定すると、ハンドルのドラッグでスナップします。画面サイズの変化やソフトキーボード表示時は `visualViewport` に追従します。`anchor`, `placement`, `autoFlip`, `offset`, `viewportPadding`, `boundary`, `arrow` は sheet では配置に使われません。競合する `anchor`, `placement`, `arrow` の明示指定には警告が出ます。
 
@@ -222,7 +224,7 @@ new PopMenu('#share', {
 
 menu 表示中に文字を入力すると、有効項目のラベルを先頭一致で検索します。連続した同じ文字は候補を順送りし、入力バッファは500ms後にリセットされます。`document.dir === 'rtl'` の場合は `-start` / `-end` の配置とグリッドの左右キーを反転します。
 
-`setItems()` は `customContent` を変更しません。カスタム内容と項目表示の切り替えは `setCustomContent()` で行ってください。`theme: 'none'` ではテーマクラスを付けず、`.pop-menu` 上の `--pm-*` CSS 変数を利用できます。
+`setItems()` は `customContent` を変更しません。表示中の項目を更新する場合は、フォーカス維持に使う安定した `id` を各項目に指定してください。カスタム内容と項目表示の切り替えは `setCustomContent()` で行ってください。`theme: 'none'` ではテーマクラスを付けず、`.pop-menu` 上の `--pm-*` CSS 変数を利用できます。
 
 ---
 
@@ -365,7 +367,7 @@ menu.show();
 | `show(x, y)` / `hide()` | Open or close the menu. In the default pointer mode, pass coordinates to `show(x, y)`. |
 | `toggle()` / `isVisible()` | Toggle the menu or check whether it is open. |
 | `setTarget(element)` | Replace the trigger or element anchor. |
-| `setItems(items)` / `updateItems(items)` | Replace the items. `updateItems()` remains as a compatibility alias. |
+| `setItems(items)` / `updateItems(items)` | Replace the items. A visible menu restores focus by stable item `id` and preserves scroll position. `updateItems()` remains as a compatibility alias. |
 | `setCustomContent(content)` | Replace custom content; pass `null` to return to the item list. |
 | `setOptions(patch)` | Shallow-merge option updates. Use the dedicated methods to update `items` or `customContent`. |
 | `reposition()` | Recalculate the current position. |
@@ -408,13 +410,15 @@ new PopMenu('#share', {
 });
 ```
 
-The sheet presentation is opt-in and does not change existing popovers. It pins the panel to the bottom of the viewport and scrolls long content within the panel without showing a scrollbar. The top handle remains fixed while scrolling. In custom content, add `pm-sheet-sticky` to an individual control, such as a close button, to keep only that control visible while the title and other content scroll normally. The sheet slides and fades in from the bottom when opening, then slides down and fades out when closing. Animations are reduced when `prefers-reduced-motion` is enabled. By default, the backdrop closes the sheet when clicked, and dragging the top handle downward also dismisses it. Disable either behavior with `backdrop: false` or `swipeToDismiss: false`.
+The sheet presentation is opt-in and does not change the existing popover presentation. Popovers briefly fade and scale in when opened. Sheets pin the panel to the bottom of the viewport and scroll long content within the panel without showing a scrollbar. The top handle remains fixed while scrolling. In custom content, add `pm-sheet-sticky` to an individual control, such as a close button, to keep only that control visible while the title and other content scroll normally. The sheet slides and fades in from the bottom when opening, then slides down and fades out when closing. Animations are reduced when `prefers-reduced-motion` is enabled. By default, the backdrop closes the sheet when clicked, and dragging the top handle downward also dismisses it. Disable either behavior with `backdrop: false` or `swipeToDismiss: false`.
 
 Sheets with a backdrop lock page scrolling, make background content inert, and use modal dialog semantics. The keyboard-focusable handle closes the sheet with Enter or Space. Set `detents: ['half', 'full']` to enable drag snapping; numeric detents represent viewport-height percentages. Visual viewport changes, including the on-screen keyboard, reposition the sheet. Positioning options (`anchor`, `placement`, `autoFlip`, `offset`, `viewportPadding`, `boundary`, and `arrow`) do not affect sheets. Explicit conflicting `anchor`, `placement`, or `arrow` values produce a warning.
 
 Customize motion and sizing with the `--pm-sheet-out-duration`, `--pm-backdrop-fade-duration`, `--pm-sheet-height`, and `--pm-vv-height` CSS variables.
 
 While a menu is open, typing searches enabled labels by prefix. Repeating a character cycles through matching items, and the search buffer resets after 500 ms. When `document.dir` is `rtl`, `-start` / `-end` placement and horizontal grid-key navigation are reversed.
+
+Pass an `HTMLElement` as `item.element`. Element items use `role="none"` on their `<li>` by default; override it with `elementRole`. Links and buttons retain their native click behavior and can be focused and activated from the keyboard. `closeOnSelect` closes the menu without cancelling the element's default action. When `setItems()` rerenders a visible menu, focus and scroll position are preserved for an item with the same stable `id`; if its ID is missing or no longer exists, focus moves to the menu itself.
 
 `setItems()` does not clear or replace `customContent`. Use `setCustomContent()` to switch between custom content and the item list. With `theme: 'none'`, customize the popup using the `--pm-*` CSS variables defined on `.pop-menu`.
 

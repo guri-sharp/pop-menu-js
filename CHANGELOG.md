@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.1.0
+
+- Made popover opening motion easier to notice while continuing to respect reduced-motion preferences.
+- Added keyboard support for interactive element items and preserved focused item state across `setItems()` updates.
+- Preserved scrollability when rerendering oversized popover menus.
+
 ## 3.0.1
 
 - Fixed sheet close completion stalling until the fallback timer when the backdrop is removed during the closing animation (for example, `setOptions({ backdrop: false })` or a `presentation` change).

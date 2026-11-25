@@ -1,5 +1,5 @@
 /**
- * PopMenu JS v3.0.1
+ * PopMenu JS v3.1.0
  * Lightweight, accessible, multi-trigger custom context menu with element positioning.
  */
 (function (global, factory) {
@@ -687,12 +687,13 @@
         const li = document.createElement('li');
         li.className = `pm-item ${item.disabled ? 'is-disabled' : ''} ${item.danger ? 'pm-danger' : ''} ${item.checked ? 'is-checked' : ''} ${item.className || ''}`.trim();
         const itemRole = ['menuitem', 'menuitemradio', 'menuitemcheckbox'].includes(item.role) ? item.role : 'menuitem';
-        li.setAttribute('role', itemRole);
+        const liRole = item.element ? (item.elementRole || 'none') : itemRole;
+        li.setAttribute('role', liRole);
         li.setAttribute('tabindex', '-1');
         li.dataset.index = index;
         if (item.id != null) li.dataset.id = item.id;
         if (item.disabled) li.setAttribute('aria-disabled', 'true');
-        if (itemRole === 'menuitemradio' || itemRole === 'menuitemcheckbox') {
+        if (!item.element && (itemRole === 'menuitemradio' || itemRole === 'menuitemcheckbox')) {
           li.setAttribute('aria-checked', item.checked ? 'true' : 'false');
         }
 
@@ -720,7 +721,7 @@
             li.appendChild(shortcutSpan);
           }
         }
-        if (!item.disabled && !item.element) {
+        if (!item.disabled) {
           li.addEventListener('click', e => this._handleItemClick(item, e));
           li.addEventListener('mouseenter', () => this._setFocusedIndex(this._getEnabledItems().indexOf(li)));
         }
@@ -1274,10 +1275,11 @@
       const availableHeight = Math.max(0, boundary.bottom - boundary.top - padding * 2);
       let rect = this.menuEl.getBoundingClientRect();
       if (rect.height > availableHeight && !this.menuEl.style.maxHeight) {
-        this._appliedPopoverMaxHeight = `${availableHeight}px`;
-        this._appliedPopoverOverflowY = 'auto';
-        this.menuEl.style.maxHeight = this._appliedPopoverMaxHeight;
-        this.menuEl.style.overflowY = this._appliedPopoverOverflowY;
+        this.menuEl.style.maxHeight = `${availableHeight}px`;
+        this.menuEl.style.overflowY = 'auto';
+        // Keep CSSOM-normalized values for the later inline-style ownership check.
+        this._appliedPopoverMaxHeight = this.menuEl.style.maxHeight;
+        this._appliedPopoverOverflowY = this.menuEl.style.overflowY;
         this.menuEl.classList.add('pm-scrollable');
         rect = this.menuEl.getBoundingClientRect();
       }
@@ -1541,6 +1543,12 @@
     }
 
     setItems(items) {
+      const restoreView = this.visible && this.menuEl;
+      const previousScrollTop = restoreView ? this.menuEl.scrollTop : 0;
+      const focusedElements = restoreView ? this._getEnabledItems() : [];
+      const focusedItem = this.focusedIndex >= 0 ? focusedElements[this.focusedIndex] : null;
+      const focusedDefinition = focusedItem && this.options.items[Number(focusedItem.dataset.index)];
+      const focusedId = focusedDefinition && focusedDefinition.id != null ? focusedDefinition.id : null;
       const previousChecked = new Map((this.options.items || [])
         .filter(item => item.id != null && typeof item.checked === 'boolean')
         .map(item => [item.id, item.checked]));
@@ -1551,7 +1559,25 @@
         return item;
       }) : [];
       this._renderContent();
-      if (this.visible) this._reposition();
+      if (restoreView) {
+        if (focusedId != null) {
+          const items = this._getEnabledItems();
+          const nextIndex = items.findIndex(el => {
+            const item = this.options.items[Number(el.dataset.index)];
+            return item && item.id != null && String(item.id) === String(focusedId);
+          });
+          if (nextIndex >= 0) this._setFocusedIndex(nextIndex);
+          else {
+            this._setFocusedIndex(-1);
+            this.menuEl.focus();
+          }
+        } else if (this.focusedIndex >= 0) {
+          this._setFocusedIndex(-1);
+          this.menuEl.focus();
+        }
+        this._reposition();
+        this.menuEl.scrollTop = previousScrollTop;
+      } else if (this.visible) this._reposition();
     }
 
     setCustomContent(content) {
@@ -1636,10 +1662,7 @@
 
     _getEnabledItems() {
       if (!this.menuEl) return [];
-      return Array.from(this.menuEl.querySelectorAll('.pm-item:not(.is-disabled)')).filter(el => {
-        const item = this.options.items[Number(el.dataset.index)];
-        return !item || !item.element;
-      });
+      return Array.from(this.menuEl.querySelectorAll('.pm-item:not(.is-disabled)'));
     }
 
     _getFocusableElements(container) {
@@ -1733,7 +1756,9 @@
       if (index >= 0 && index < items.length) {
         this.focusedIndex = index;
         items[index].classList.add('is-focused');
-        items[index].focus();
+        const item = this.options.items[Number(items[index].dataset.index)];
+        const focusable = item && item.element ? this._getFocusableElements(items[index])[0] : null;
+        (focusable || items[index]).focus();
       } else {
         this.focusedIndex = -1;
       }
@@ -1754,8 +1779,6 @@
       const navigable = ['ArrowDown', 'ArrowUp', 'Home', 'End', 'Enter', ' '].includes(e.key) ||
         (this.options.layout === 'grid' && ['ArrowLeft', 'ArrowRight'].includes(e.key));
       if (!navigable) return;
-      const owner = target && target.closest('.pm-item');
-      if (owner && this.options.items[Number(owner.dataset.index)] && this.options.items[Number(owner.dataset.index)].element) return;
       e.preventDefault();
       const cols = this.options.layout === 'grid' ? (this.options.columns || 3) : 1;
       const rtl = typeof document !== 'undefined' && document.dir === 'rtl';
@@ -1768,7 +1791,14 @@
       else if ((e.key === 'Enter' || e.key === ' ') && this.focusedIndex >= 0 && this.focusedIndex < items.length) {
         const itemIndex = parseInt(items[this.focusedIndex].dataset.index, 10);
         const item = this.options.items[itemIndex];
-        if (item) this._handleItemClick(item, e);
+        if (item && item.element) {
+          const activationTarget = (item.element.querySelector &&
+            item.element.querySelector('a[href], button, [role="button"], [role="menuitem"]')) || item.element;
+          const targetIsDisabled = element => element && (
+            element.disabled || element.getAttribute('aria-disabled') === 'true'
+          );
+          if (!targetIsDisabled(activationTarget) && typeof activationTarget.click === 'function') activationTarget.click();
+        } else if (item) this._handleItemClick(item, e);
       }
     }
 

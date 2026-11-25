@@ -639,6 +639,20 @@
       </div>
     </div>
 
+    <h2>M-01 / M-02 項目操作と更新</h2>
+    <div class="demo-grid">
+      <div class="card">
+        <h3>リンク・ボタン要素</h3>
+        <p>矢印キーで移動し、Enter / Space で要素を操作します。</p>
+        <button class="btn" id="demo-element-items">要素項目を開く</button>
+      </div>
+      <div class="card">
+        <h3>表示中の項目更新</h3>
+        <p>通知項目を切り替えても、同じ項目へフォーカスを保ちます。</p>
+        <button class="btn" id="demo-live-update">更新メニューを開く</button>
+      </div>
+    </div>
+
     <!-- コンソールログ -->
     <div class="log-section">
       <div class="log-header">
@@ -898,6 +912,55 @@
     });
 
     PopMenu.autoInit(document);
+
+    const termsLink = document.createElement('a');
+    termsLink.href = '#demo-element-items';
+    termsLink.setAttribute('role', 'menuitem');
+    termsLink.textContent = '利用規約リンク';
+    const elementAction = document.createElement('button');
+    elementAction.type = 'button';
+    elementAction.setAttribute('role', 'menuitem');
+    elementAction.setAttribute('tabindex', '-1');
+    elementAction.textContent = '通知を確認';
+    new PopMenu('#demo-element-items', {
+      trigger: 'click',
+      anchor: 'element',
+      items: [
+        { id: 'terms', element: termsLink },
+        { id: 'notifications', element: elementAction, onClick: () => log('ELEMENT', '通知を確認しました') }
+      ]
+    });
+
+    let notificationsEnabled = false;
+    let liveUpdateMenu;
+    const createNotificationItem = () => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.setAttribute('role', 'menuitem');
+      button.setAttribute('tabindex', '-1');
+      button.textContent = `通知: ${notificationsEnabled ? 'オン' : 'オフ'}`;
+      return {
+        id: 'notifications',
+        element: button,
+        onClick() {
+          notificationsEnabled = !notificationsEnabled;
+          liveUpdateMenu.setItems([
+            createNotificationItem(),
+            { id: 'help', label: 'ヘルプ' }
+          ]);
+          log('UPDATE', `通知を${notificationsEnabled ? 'オン' : 'オフ'}にしました`);
+        }
+      };
+    };
+    liveUpdateMenu = new PopMenu('#demo-live-update', {
+      trigger: 'click',
+      anchor: 'element',
+      closeOnSelect: false,
+      items: [
+        createNotificationItem(),
+        { id: 'help', label: 'ヘルプ' }
+      ]
+    });
 
     new PopMenu('#demo-bottom-sheet', {
       trigger: 'click',
