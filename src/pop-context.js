@@ -1,5 +1,5 @@
 /**
- * PopContext v2.7.0
+ * PopContext v2.8.0
  * Lightweight, accessible, multi-trigger custom context menu with element positioning.
  */
 (function (global, factory) {
@@ -55,7 +55,7 @@
   function handleGlobalClick(e) {
     instances.forEach(inst => {
       if (inst.options.closeOnOutsideClick && inst.visible && inst.menuEl && !inst.menuEl.contains(e.target) && !isInsideTarget(inst, e.target)) {
-        inst.hide();
+        inst.hide({ restoreFocus: inst.backdropEl === e.target });
       }
     });
   }
@@ -63,7 +63,7 @@
   function handleGlobalContextMenu(e) {
     instances.forEach(inst => {
       if (inst.options.closeOnOutsideClick && inst.visible && inst.menuEl && !inst.menuEl.contains(e.target) && !isInsideTarget(inst, e.target)) {
-        inst.hide();
+        inst.hide({ restoreFocus: inst.backdropEl === e.target });
       }
     });
   }
@@ -71,7 +71,7 @@
   function handleGlobalTouchStart(e) {
     instances.forEach(inst => {
       if (inst.options.closeOnOutsideClick && inst.visible && inst.menuEl && !inst.menuEl.contains(e.target) && !isInsideTarget(inst, e.target)) {
-        inst.hide();
+        inst.hide({ restoreFocus: inst.backdropEl === e.target });
       }
     });
   }
@@ -98,8 +98,7 @@
 
     if (e.key === 'Escape' && activeInst.options.closeOnEscape) {
       e.preventDefault();
-      activeInst.hide({ restoreFocus: false });
-      activeInst._restoreFocus();
+      activeInst.hide({ restoreFocus: true });
       return;
     }
 
@@ -122,6 +121,9 @@
         customContent: null,
         layout: 'list',
         columns: 3,
+        presentation: 'popover',
+        backdrop: true,
+        swipeToDismiss: true,
         trigger: 'contextmenu',
         delegate: null,
         toggle: false,
@@ -166,6 +168,9 @@
       this._sourceTarget = target;
       this.menuEl = null;
       this.arrowEl = null;
+      this.backdropEl = null;
+      this.sheetHandleEl = null;
+      this._sheetDrag = null;
       this.visible = false;
       this.focusedIndex = -1;
       this.lastPosition = { x: 0, y: 0 };
@@ -182,10 +187,15 @@
       this._managedTargets = new Set();
       this._rafId = null;
       this._rafIsTimeout = false;
+      this._sheetCloseTimer = null;
       this._showing = false;
       this._destroyed = false;
       this._typeAheadBuffer = '';
       this._typeAheadTimer = null;
+      this._onSheetPointerDown = this._onSheetPointerDown.bind(this);
+      this._onSheetPointerMove = this._onSheetPointerMove.bind(this);
+      this._onSheetPointerUp = this._onSheetPointerUp.bind(this);
+      this._onSheetPointerCancel = this._onSheetPointerCancel.bind(this);
 
       this._initTargets(target);
       this.triggerOrigin = this.targetEls[0] || null;
@@ -327,15 +337,52 @@
       this._updateMenuAttributes();
       this._renderContent();
       document.body.appendChild(this.menuEl);
+      this._syncPresentationElements();
+    }
+
+    _syncPresentationElements() {
+      if (!this.menuEl || typeof document === 'undefined') return;
+      const needsBackdrop = this.options.presentation === 'sheet' && this.options.backdrop;
+      if (needsBackdrop && !this.backdropEl) {
+        this.backdropEl = document.createElement('div');
+        this.backdropEl.className = 'pc-sheet-backdrop';
+        this.backdropEl.setAttribute('aria-hidden', 'true');
+        this.backdropEl.style.position = 'fixed';
+        this.backdropEl.style.inset = '0';
+        this.backdropEl.style.display = 'none';
+      } else if (!needsBackdrop && this.backdropEl) {
+        this.backdropEl.remove();
+        this.backdropEl = null;
+      }
+
+      if (this.backdropEl) {
+        const zIndex = Number(this.options.zIndex);
+        this.backdropEl.style.zIndex = String(Number.isFinite(zIndex) ? zIndex - 1 : 999998);
+        if (this.menuEl.parentNode) this.menuEl.parentNode.insertBefore(this.backdropEl, this.menuEl);
+        this._setPresentationVisibility(this.visible);
+      }
+    }
+
+    _setPresentationVisibility(visible, closing = false) {
+      if (!this.backdropEl) return;
+      const shown = visible && this.options.presentation === 'sheet' && this.options.backdrop;
+      this.backdropEl.style.display = shown || closing ? 'block' : 'none';
+      this.backdropEl.setAttribute('aria-hidden', shown ? 'false' : 'true');
+      this.backdropEl.classList.toggle('is-visible', shown);
+      if (!this._sheetDrag) this.backdropEl.style.opacity = '';
     }
 
     _updateMenuAttributes() {
       if (!this.menuEl) return;
       const themeClass = this.options.theme && this.options.theme !== 'none' ? `theme-${this.options.theme}` : '';
       const layoutClass = this.options.customContent ? 'pc-layout-custom' : `pc-layout-${this.options.layout === 'grid' ? 'grid' : 'list'}`;
-      const classes = ['pop-context-menu', themeClass, layoutClass, this.options.arrow ? 'has-arrow' : '', this.options.className].filter(Boolean);
+      const sheet = this.options.presentation === 'sheet';
+      const showArrow = this.options.arrow && !sheet;
+      const classes = ['pop-context-menu', themeClass, layoutClass, showArrow ? 'has-arrow' : '', sheet ? 'pc-presentation-sheet' : '', this.options.className].filter(Boolean);
       this.menuEl.className = classes.join(' ');
       this.menuEl.setAttribute('role', this._getRole());
+      if (sheet && this.options.backdrop && this._getRole() === 'dialog') this.menuEl.setAttribute('aria-modal', 'true');
+      else this.menuEl.removeAttribute('aria-modal');
       if (this.options.ariaLabel) this.menuEl.setAttribute('aria-label', this.options.ariaLabel);
       else this.menuEl.removeAttribute('aria-label');
       this.menuEl.style.zIndex = String(this.options.zIndex);
@@ -345,15 +392,15 @@
         this.menuEl.style.removeProperty('--pc-columns');
       }
 
-      if (this.options.arrow && !this.arrowEl) {
+      if (showArrow && !this.arrowEl) {
         this.arrowEl = document.createElement('div');
         this.arrowEl.className = 'pc-arrow';
         this.menuEl.insertBefore(this.arrowEl, this.menuEl.firstChild);
-      } else if (!this.options.arrow && this.arrowEl) {
+      } else if (!showArrow && this.arrowEl) {
         this.arrowEl.remove();
         this.arrowEl = null;
       }
-      if (this.arrowEl && this.options.arrowOffset != null) {
+      if (this.arrowEl && showArrow && this.options.arrowOffset != null) {
         this.menuEl.style.setProperty('--pc-arrow-offset', `${Number(this.options.arrowOffset)}px`);
       } else if (this.menuEl) {
         this.menuEl.style.removeProperty('--pc-arrow-offset');
@@ -365,6 +412,21 @@
       Array.from(this.menuEl.childNodes).forEach(node => {
         if (node !== this.arrowEl) node.remove();
       });
+      this.sheetHandleEl = null;
+
+      if (this.options.presentation === 'sheet' && this.options.swipeToDismiss) {
+        this.sheetHandleEl = document.createElement('div');
+        this.sheetHandleEl.className = 'pc-sheet-handle';
+        this.sheetHandleEl.setAttribute('aria-hidden', 'true');
+        const handleBar = document.createElement('span');
+        handleBar.className = 'pc-sheet-handle-bar';
+        this.sheetHandleEl.appendChild(handleBar);
+        this.sheetHandleEl.addEventListener('pointerdown', this._onSheetPointerDown);
+        this.sheetHandleEl.addEventListener('pointermove', this._onSheetPointerMove);
+        this.sheetHandleEl.addEventListener('pointerup', this._onSheetPointerUp);
+        this.sheetHandleEl.addEventListener('pointercancel', this._onSheetPointerCancel);
+        this.menuEl.appendChild(this.sheetHandleEl);
+      }
 
       if (this.options.customContent) {
         const customContainer = document.createElement('div');
@@ -718,6 +780,11 @@
       } finally {
         this._showing = false;
       }
+      if (this._sheetCloseTimer != null) {
+        clearTimeout(this._sheetCloseTimer);
+        this._sheetCloseTimer = null;
+      }
+      this.menuEl.classList.remove('is-closing');
       if (this.options.anchor === 'pointer' && typeof x === 'number' && typeof y === 'number') {
         this.lastPosition = { x, y };
       }
@@ -727,6 +794,7 @@
       this.menuEl.style.display = 'block';
       if (this.options.syncHidden) this.menuEl.hidden = false;
       this.menuEl.setAttribute('aria-hidden', 'false');
+      this._setPresentationVisibility(true);
       this.visible = true;
       this._writeExpanded(true);
       this._writeOpenClass(true);
@@ -736,6 +804,54 @@
       this._focusInitial();
       if (typeof this.options.onShow === 'function') {
         this.options.onShow.call(this, { x: this.lastPosition.x, y: this.lastPosition.y });
+      }
+    }
+
+    _onSheetPointerDown(e) {
+      if (this.options.presentation !== 'sheet' || !this.options.swipeToDismiss || e.button !== 0) return;
+      this._sheetDrag = { pointerId: e.pointerId, startY: e.clientY };
+      this.menuEl.classList.add('is-dragging');
+      this.backdropEl && this.backdropEl.classList.add('is-dragging');
+      if (e.currentTarget.setPointerCapture) e.currentTarget.setPointerCapture(e.pointerId);
+      e.preventDefault();
+    }
+
+    _onSheetPointerMove(e) {
+      if (!this._sheetDrag || e.pointerId !== this._sheetDrag.pointerId) return;
+      const distance = Math.max(0, e.clientY - this._sheetDrag.startY);
+      this.menuEl.style.transform = `translateY(${distance}px)`;
+      if (this.backdropEl) {
+        const height = this.menuEl.getBoundingClientRect().height || window.innerHeight;
+        this.backdropEl.style.opacity = String(Math.max(0, 1 - distance / height));
+      }
+    }
+
+    _onSheetPointerUp(e) {
+      if (!this._sheetDrag || e.pointerId !== this._sheetDrag.pointerId) return;
+      const distance = e.clientY - this._sheetDrag.startY;
+      const height = this.menuEl.getBoundingClientRect().height || window.innerHeight;
+      this._resetSheetDrag();
+      if (distance >= Math.max(72, height * 0.25)) this.hide({ restoreFocus: true });
+    }
+
+    _onSheetPointerCancel(e) {
+      if (this._sheetDrag && e.pointerId === this._sheetDrag.pointerId) this._resetSheetDrag();
+    }
+
+    _resetSheetDrag() {
+      const drag = this._sheetDrag;
+      if (drag && this.sheetHandleEl && this.sheetHandleEl.hasPointerCapture &&
+          this.sheetHandleEl.hasPointerCapture(drag.pointerId)) {
+        this.sheetHandleEl.releasePointerCapture(drag.pointerId);
+      }
+      this._sheetDrag = null;
+      if (this.menuEl) {
+        this.menuEl.classList.remove('is-dragging');
+        this.menuEl.style.transform = '';
+      }
+      if (this.backdropEl) {
+        this.backdropEl.classList.remove('is-dragging');
+        this.backdropEl.style.opacity = '';
       }
     }
 
@@ -770,6 +886,23 @@
 
     _reposition() {
       if (!this.menuEl || typeof window === 'undefined' || !this.visible) return;
+      if (this.options.presentation === 'sheet') {
+        this.menuEl.style.top = 'auto';
+        this.menuEl.style.bottom = '0px';
+        this.menuEl.style.left = '0px';
+        this.menuEl.style.right = '0px';
+        this.menuEl.style.width = '100%';
+        this.menuEl.style.maxHeight = '';
+        this.menuEl.style.overflowY = '';
+        this.currentFlipState = { flipX: false, flipY: false };
+        return;
+      }
+      this.menuEl.style.bottom = 'auto';
+      this.menuEl.style.right = 'auto';
+      this.menuEl.style.width = '';
+      this.menuEl.style.maxHeight = '';
+      this.menuEl.style.overflowY = '';
+      if (!this._sheetDrag) this.menuEl.style.transform = '';
       const anchorRect = this._getAnchorRect();
       if (!anchorRect) {
         this.hide();
@@ -909,24 +1042,51 @@
 
     hide(options = {}) {
       if (!this.visible) return;
+      if (options.restoreFocus === true) this._restoreFocus();
+      this._resetSheetDrag();
+      const reduceMotion = typeof window !== 'undefined' && typeof window.matchMedia === 'function' &&
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const animateSheet = this.options.presentation === 'sheet' && !reduceMotion;
       if (this.menuEl) {
-        this.menuEl.style.display = 'none';
-        if (this.options.syncHidden) this.menuEl.hidden = true;
+        if (animateSheet) {
+          this.menuEl.classList.add('is-closing');
+          if (this.options.syncHidden) this.menuEl.hidden = false;
+        } else {
+          this.menuEl.style.display = 'none';
+          this.menuEl.classList.remove('is-closing');
+          if (this.options.syncHidden) this.menuEl.hidden = true;
+        }
         this.menuEl.setAttribute('aria-hidden', 'true');
       }
+      this._setPresentationVisibility(false, animateSheet);
       this.visible = false;
       this.focusedIndex = -1;
       this._writeExpanded(false);
       this._writeOpenClass(false);
       this._cancelLongPress();
       this._clearTypeAhead();
+      if (animateSheet) {
+        const closeTimer = setTimeout(() => {
+          if (this._sheetCloseTimer !== closeTimer) return;
+          this._sheetCloseTimer = null;
+          this._finishSheetClose();
+        }, 270);
+        this._sheetCloseTimer = closeTimer;
+      }
       if (this._rafId != null) {
         if (this._rafIsTimeout) clearTimeout(this._rafId);
         else if (typeof cancelAnimationFrame === 'function') cancelAnimationFrame(this._rafId);
         this._rafId = null;
       }
-      if (options.restoreFocus === true) this._restoreFocus();
       if (typeof this.options.onHide === 'function') this.options.onHide.call(this);
+    }
+
+    _finishSheetClose() {
+      if (this.visible || !this.menuEl) return;
+      this.menuEl.style.display = 'none';
+      this.menuEl.classList.remove('is-closing');
+      if (this.options.syncHidden) this.menuEl.hidden = true;
+      this._setPresentationVisibility(false);
     }
 
     _restoreFocus() {
@@ -972,12 +1132,18 @@
       const oldTrigger = this.options.trigger;
       const oldDelegate = this.options.delegate;
       const oldOpenClass = this.options.openClass;
+      const oldPresentation = this.options.presentation;
+      const oldSwipeToDismiss = this.options.swipeToDismiss;
+      const oldBackdrop = this.options.backdrop;
       const safePatch = Object.assign({}, patch);
       delete safePatch.items;
       delete safePatch.customContent;
       if (Object.prototype.hasOwnProperty.call(safePatch, 'placement')) this._placementExplicit = true;
       if (safePatch.aria) safePatch.aria = Object.assign({}, this.options.aria, safePatch.aria);
       Object.assign(this.options, safePatch);
+      if (oldPresentation !== this.options.presentation || oldSwipeToDismiss !== this.options.swipeToDismiss ||
+          oldBackdrop !== this.options.backdrop) this._resetSheetDrag();
+      this._syncPresentationElements();
       if (Object.prototype.hasOwnProperty.call(safePatch, 'syncHidden') && this.menuEl) {
         if (this.options.syncHidden) this.menuEl.hidden = !this.visible;
         else this.menuEl.hidden = false;
@@ -1063,8 +1229,7 @@
       const role = this._getRole();
       if (role === 'menu') {
         e.preventDefault();
-        this.hide({ restoreFocus: false });
-        this._restoreFocus();
+        this.hide({ restoreFocus: true });
         return;
       }
       if (role !== 'dialog') return;
@@ -1180,6 +1345,10 @@
       if (this._destroyed) return;
       this._destroyed = true;
       this.hide({ restoreFocus: false });
+      if (this._sheetCloseTimer != null) {
+        clearTimeout(this._sheetCloseTimer);
+        this._sheetCloseTimer = null;
+      }
       this._unbindTargetEvents();
       this._cancelLongPress();
       this._clearTypeAhead();
@@ -1190,9 +1359,12 @@
       this._restoreTargetState();
       instances.delete(this);
       unbindGlobalEvents();
+      if (this.backdropEl && this.backdropEl.parentNode) this.backdropEl.parentNode.removeChild(this.backdropEl);
       if (this.menuEl && this.menuEl.parentNode) this.menuEl.parentNode.removeChild(this.menuEl);
       this.menuEl = null;
       this.arrowEl = null;
+      this.backdropEl = null;
+      this.sheetHandleEl = null;
       this.targetEls = [];
       this.triggerOrigin = null;
       declarativeInstances.forEach((instance, root) => {

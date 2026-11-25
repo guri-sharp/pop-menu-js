@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.8.0
+
+- Added an opt-in bottom-sheet presentation with a backdrop and swipe-to-dismiss handle.
+- Added subtle open/close motion for bottom sheets, respecting reduced-motion preferences.
+- Restored focus before hiding focused menu content from assistive technology.
+
 ## 2.7.0
 
 - Added explicit declarative initialization and cleanup through `PopContext.autoInit()` and `autoDestroy()`.

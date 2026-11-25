@@ -211,6 +211,244 @@
       font-weight: bold;
       margin-right: 6px;
     }
+
+    .pc-sheet-demo-card {
+      max-width: 440px;
+      padding: 22px;
+      border: 1px solid #dbe5f1;
+      background: linear-gradient(145deg, #ffffff 35%, #f0f7ff);
+      text-align: left;
+    }
+
+    .pc-sheet-demo-card-heading {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+
+    .pc-sheet-demo-card-icon,
+    .pc-sheet-demo-title-icon {
+      display: grid;
+      flex: 0 0 auto;
+      place-items: center;
+      color: #2563eb;
+      background: #eaf2ff;
+    }
+
+    .pc-sheet-demo-card-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 15px;
+      font-size: 19px;
+    }
+
+    .pc-sheet-demo-card h3 {
+      justify-content: flex-start;
+      margin: 0 0 4px;
+      font-size: 17px;
+    }
+
+    .pc-sheet-demo-card p {
+      line-height: 1.6;
+    }
+
+    .pc-sheet-demo-card .btn {
+      width: 100%;
+      justify-content: center;
+    }
+
+    .pc-sheet-demo-content {
+      padding: 8px 18px 22px;
+    }
+
+    .pc-sheet-demo-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 2px 0 8px;
+    }
+
+    .pc-sheet-demo-title-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 14px;
+      font-size: 17px;
+    }
+
+    .pc-sheet-demo-title {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .pc-sheet-demo-eyebrow {
+      display: block;
+      margin-bottom: 2px;
+      color: #64748b;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+    }
+
+    .pc-sheet-demo-content h3 {
+      margin: 0;
+      color: #0f172a;
+      font-size: 19px;
+      line-height: 1.3;
+    }
+
+    .pc-sheet-demo-close {
+      display: grid;
+      width: 36px;
+      height: 36px;
+      place-items: center;
+      flex: 0 0 auto;
+      color: #64748b;
+      background: #f1f5f9;
+      border: 0;
+      border-radius: 50%;
+      cursor: pointer;
+    }
+
+    .pc-sheet-demo-close:hover {
+      color: #0f172a;
+      background: #e2e8f0;
+    }
+
+    .pc-sheet-demo-description {
+      margin: 0 0 16px;
+      color: #64748b;
+      font-size: 13px;
+    }
+
+    .pc-sheet-demo-link {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 14px;
+      padding: 12px;
+      background: #f8fafc;
+      border: 1px solid #e8edf4;
+      border-radius: 14px;
+    }
+
+    .pc-sheet-demo-link-icon {
+      display: grid;
+      width: 38px;
+      height: 38px;
+      flex: 0 0 auto;
+      place-items: center;
+      color: #475569;
+      background: #e2e8f0;
+      border-radius: 11px;
+    }
+
+    .pc-sheet-demo-link-copy {
+      min-width: 0;
+    }
+
+    .pc-sheet-demo-link-copy span,
+    .pc-sheet-demo-link-copy strong {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .pc-sheet-demo-link-copy span {
+      margin-bottom: 2px;
+      color: #64748b;
+      font-size: 11px;
+    }
+
+    .pc-sheet-demo-link-copy strong {
+      color: #1e293b;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .pc-sheet-demo-actions {
+      display: grid;
+      gap: 8px;
+    }
+
+    .pc-sheet-demo-actions button {
+      display: flex;
+      min-height: 62px;
+      align-items: center;
+      gap: 12px;
+      padding: 9px 12px;
+      color: #1e293b;
+      text-align: left;
+      background: #ffffff;
+      border: 1px solid #e8edf4;
+      border-radius: 14px;
+      cursor: pointer;
+      transition: background 0.16s ease, border-color 0.16s ease, transform 0.16s ease;
+    }
+
+    .pc-sheet-demo-actions button:hover {
+      background: #f8fafc;
+      border-color: #bfdbfe;
+      transform: translateY(-1px);
+    }
+
+    .pc-sheet-demo-action-icon {
+      display: grid;
+      width: 40px;
+      height: 40px;
+      flex: 0 0 auto;
+      place-items: center;
+      color: #2563eb;
+      background: #eff6ff;
+      border-radius: 12px;
+      font-size: 15px;
+    }
+
+    .pc-sheet-demo-action-icon.is-green {
+      color: #059669;
+      background: #ecfdf5;
+    }
+
+    .pc-sheet-demo-action-icon.is-violet {
+      color: #7c3aed;
+      background: #f5f3ff;
+    }
+
+    .pc-sheet-demo-action-copy {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .pc-sheet-demo-action-copy strong,
+    .pc-sheet-demo-action-copy span {
+      display: block;
+    }
+
+    .pc-sheet-demo-action-copy strong {
+      margin-bottom: 2px;
+      font-size: 13px;
+    }
+
+    .pc-sheet-demo-action-copy span {
+      color: #64748b;
+      font-size: 11px;
+    }
+
+    .pc-sheet-demo-action-arrow {
+      color: #94a3b8;
+      font-size: 12px;
+    }
+
+    .pc-sheet-demo-note {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      margin: 14px 0 0;
+      color: #94a3b8;
+      font-size: 11px;
+    }
   </style>
 </head>
 <body>
@@ -358,6 +596,21 @@
       <div data-pop-item><span data-pop-label>アーカイブ</span></div>
       <div data-pop-item><span data-pop-label>削除</span></div>
     </template>
+
+    <h2>v2.8.0 の追加機能</h2>
+    <div class="demo-grid">
+      <div class="card pc-sheet-demo-card">
+        <div class="pc-sheet-demo-card-heading">
+          <span class="pc-sheet-demo-card-icon" aria-hidden="true"><i class="fa-solid fa-arrow-up-from-bracket"></i></span>
+          <div>
+            <h3>ボトムシート</h3>
+            <p>下から現れる、アプリ風の共有メニューです。</p>
+          </div>
+        </div>
+        <button class="btn" id="demo-bottom-sheet"><i class="fa-solid fa-share-nodes" aria-hidden="true"></i>共有メニューを開く</button>
+        <p style="margin-top: 12px;">背景をタップするか、ハンドルを下へスワイプして閉じます。</p>
+      </div>
+    </div>
 
     <!-- コンソールログ -->
     <div class="log-section">
@@ -618,6 +871,60 @@
     });
 
     PopContext.autoInit(document);
+
+    new PopContext('#demo-bottom-sheet', {
+      trigger: 'click',
+      presentation: 'sheet',
+      backdrop: true,
+      swipeToDismiss: true,
+      ariaLabel: '共有メニュー',
+      customContent(container) {
+        const content = document.createElement('section');
+        content.className = 'pc-sheet-demo-content';
+        content.innerHTML = `
+          <div class="pc-sheet-demo-header">
+            <span class="pc-sheet-demo-title-icon" aria-hidden="true"><i class="fa-solid fa-arrow-up-from-bracket"></i></span>
+            <div class="pc-sheet-demo-title">
+              <span class="pc-sheet-demo-eyebrow">SHARE</span>
+              <h3>このページを共有</h3>
+            </div>
+            <button class="pc-sheet-demo-close" type="button" aria-label="閉じる"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+          </div>
+          <p class="pc-sheet-demo-description">共有方法を選択してください。</p>
+          <div class="pc-sheet-demo-link">
+            <span class="pc-sheet-demo-link-icon" aria-hidden="true"><i class="fa-solid fa-link"></i></span>
+            <div class="pc-sheet-demo-link-copy">
+              <span>共有リンク</span>
+              <strong>pop-context.dev/demo</strong>
+            </div>
+          </div>
+          <div class="pc-sheet-demo-actions"></div>
+          <p class="pc-sheet-demo-note"><i class="fa-solid fa-circle-info" aria-hidden="true"></i>操作内容はイベントログで確認できます</p>
+        `;
+        content.querySelector('.pc-sheet-demo-close').addEventListener('click', () => {
+          this.hide({ restoreFocus: true });
+        });
+        [
+          { label: 'リンクをコピー', description: 'リンク共有のデモ操作', icon: 'fa-link', tone: '' },
+          { label: 'メッセージ', description: 'メッセージ共有のデモ操作', icon: 'fa-comment-dots', tone: 'is-green' },
+          { label: 'メール', description: 'メール共有のデモ操作', icon: 'fa-envelope', tone: 'is-violet' }
+        ].forEach(action => {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.innerHTML = `
+            <span class="pc-sheet-demo-action-icon ${action.tone}" aria-hidden="true"><i class="fa-solid ${action.icon}"></i></span>
+            <span class="pc-sheet-demo-action-copy"><strong>${action.label}</strong><span>${action.description}</span></span>
+            <i class="fa-solid fa-chevron-right pc-sheet-demo-action-arrow" aria-hidden="true"></i>
+          `;
+          button.addEventListener('click', () => {
+            log('SHEET', `${action.label}を選択しました`);
+            this.hide({ restoreFocus: true });
+          });
+          content.querySelector('.pc-sheet-demo-actions').appendChild(button);
+        });
+        container.appendChild(content);
+      }
+    });
   </script>
 </body>
 </html>

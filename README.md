@@ -23,6 +23,7 @@
 - ♿ **アクセシビリティ対応**: WAI-ARIA 属性やキーボード操作（`↑`/`↓`/`←`/`→`/`Escape`）に対応。
 - 🔎 **type-ahead と RTL**: 文字入力でメニュー項目を検索し、`dir="rtl"` に合わせて配置とグリッド操作を反転。
 - 🏷️ **宣言的利用**: データ属性と `<template>` からメニューを作り、`autoInit()` で委譲初期化。
+- 📱 **ボトムシート**: 背景オーバーレイとドラッグハンドル付きのシート表示を選択可能。
 
 ---
 
@@ -79,6 +80,9 @@ new PopContext('#color-btn', {
 | `items` | `Array<Object>` | `[]` | メニュー項目の配列 |
 | `layout` | `'list'` \| `'grid'` | `'list'` | 表示レイアウト |
 | `columns` | `number` | `3` | グリッドレイアウト時の列数 |
+| `presentation` | `'popover'` \| `'sheet'` | `'popover'` | 表示形式。`sheet` は画面下部に固定 |
+| `backdrop` | `boolean` | `true` | `sheet` 表示時に背景オーバーレイを表示 |
+| `swipeToDismiss` | `boolean` | `true` | `sheet` のドラッグハンドルを下へスワイプして閉じる |
 | `trigger` | `'contextmenu'` \| `'click'` \| `'longpress'` \| `'manual'` | `'contextmenu'` | 起動トリガー |
 | `delegate` | `string` \| `null` | `null` | 親要素上で動的な子要素のイベントを委譲する CSS セレクター |
 | `longPressDuration` | `number` | `500` | 長押し成立までの時間（ms） |
@@ -178,6 +182,20 @@ PopContext.autoDestroy(document);
 
 `autoInit(root)` は明示的に呼び出してください。root 内の `[data-pop-context]` 要素を click トリガーとして委譲し、後から追加された要素にも対応します。一致する要素がまだないrootでも初期化でき、同じrootへの再呼び出しでは既存インスタンスを返します。重複した委譲を避けるため、重なり合うrootを別々に初期化しないでください。各ボタンの `data-pop-context-items` は `<template>` のセレクター、`data-pop-context-placement` は配置を指定します。指定したセレクターが `<template>` に一致しない場合、表示時にエラーになります。テンプレート内では `[data-pop-item]` が項目、`[data-pop-label]` がラベルです。`data-pop-role` / `data-pop-checked` / `data-pop-disabled` / `data-pop-hidden` / `data-pop-danger` / `data-pop-icon` / `data-pop-shortcut` も指定できます。`data-pop-divider` と `data-pop-group` は区切りと見出しです。自動初期化は既定では実行されません。`autoDestroy(root)` は指定rootのインスタンスを破棄し、引数なしでは自動初期化した全インスタンスを破棄します。
 
+### ボトムシート
+
+```javascript
+new PopContext('#share', {
+  trigger: 'click',
+  presentation: 'sheet',
+  backdrop: true,
+  swipeToDismiss: true,
+  items: [{ label: 'リンクをコピー' }, { label: '共有' }]
+});
+```
+
+`presentation: 'sheet'` は明示指定で有効になり、既存の popover 表示は変わりません。シートは画面下部に固定され、長い内容はシート内でスクロールします。表示時は下からスライドしてフェードインし、閉じる時は下へスライドしてフェードアウトします。`prefers-reduced-motion` が有効な環境ではアニメーションを抑えます。既定の背景オーバーレイはクリックで閉じ、上部ハンドルを下へドラッグしても閉じられます。`backdrop` と `swipeToDismiss` は個別に無効化できます。
+
 menu 表示中に文字を入力すると、有効項目のラベルを先頭一致で検索します。連続した同じ文字は候補を順送りし、入力バッファは500ms後にリセットされます。`document.dir === 'rtl'` の場合は `-start` / `-end` の配置とグリッドの左右キーを反転します。
 
 `setItems()` は `customContent` を変更しません。カスタム内容と項目表示の切り替えは `setCustomContent()` で行ってください。`theme: 'none'` ではテーマクラスを付けず、`.pop-context-menu` 上の `--pc-*` CSS 変数を利用できます。
@@ -201,6 +219,7 @@ Right-click, click, and long-press triggers are supported, along with custom con
 - **Accessibility:** Synchronize trigger ARIA attributes, navigate menu items with the keyboard, and restore trigger attributes on `destroy()`.
 - **Type-ahead and RTL:** Find menu items by typing; placement alignment and grid arrow navigation follow the document direction.
 - **Declarative setup:** Initialize delegated triggers and `<template>` items from data attributes with `PopContext.autoInit()`.
+- **Bottom sheets:** Opt in to a fixed bottom panel with a backdrop and swipe-to-dismiss handle.
 - **No runtime dependencies:** Use the library directly from its JavaScript and CSS files.
 
 ---
@@ -266,6 +285,9 @@ menu.show();
 | `items` | `Array<Object>` | `[]` | Menu item definitions. |
 | `layout` | `'list'` \| `'grid'` | `'list'` | Item layout. |
 | `columns` | `number` | `3` | Number of columns for a grid layout. |
+| `presentation` | `'popover'` \| `'sheet'` | `'popover'` | Presentation style. `'sheet'` pins the panel to the bottom of the viewport. |
+| `backdrop` | `boolean` | `true` | Show a backdrop for sheet presentation. |
+| `swipeToDismiss` | `boolean` | `true` | Allow dismissing a sheet by dragging its handle downward. |
 | `trigger` | `'contextmenu'` \| `'click'` \| `'longpress'` \| `'manual'` | `'contextmenu'` | How the menu is opened. |
 | `longPressDuration` | `number` | `500` | Hold duration in milliseconds for the `longpress` trigger. |
 | `longPressMoveTolerance` | `number` | `10` | Cancel a long press when the pointer moves farther than this distance, in pixels. |
@@ -331,6 +353,20 @@ PopContext.autoDestroy(document);
 ```
 
 Call `autoInit(root)` explicitly; it delegates click handling for `[data-pop-context]` elements in the root, including matching elements added later. It can be called before any matching elements exist, and repeated calls with the same root return the existing instance. Avoid initializing overlapping roots to prevent duplicate delegated handlers. Each trigger can select a `<template>` with `data-pop-context-items` and choose a placement with `data-pop-context-placement`; a specified selector that does not resolve to a template causes an error when the menu opens. Inside the template, `[data-pop-item]` marks an item and `[data-pop-label]` provides its label. Supported item attributes include `data-pop-role`, `data-pop-checked`, `data-pop-disabled`, `data-pop-hidden`, `data-pop-danger`, `data-pop-icon`, and `data-pop-shortcut`; use `data-pop-divider` and `data-pop-group` for separators and group labels. No automatic initialization runs unless requested. `autoDestroy(root)` destroys the instance for that exact root; without a root, it destroys all declaratively initialized instances.
+
+### Bottom Sheets
+
+```javascript
+new PopContext('#share', {
+  trigger: 'click',
+  presentation: 'sheet',
+  backdrop: true,
+  swipeToDismiss: true,
+  items: [{ label: 'Copy link' }, { label: 'Share' }]
+});
+```
+
+The sheet presentation is opt-in and does not change existing popovers. It pins the panel to the bottom of the viewport and scrolls long content within the panel. It slides and fades in from the bottom when opening, then slides down and fades out when closing. Animations are reduced when `prefers-reduced-motion` is enabled. By default, the backdrop closes the sheet when clicked, and dragging the top handle downward also dismisses it. Disable either behavior with `backdrop: false` or `swipeToDismiss: false`.
 
 While a menu is open, typing searches enabled labels by prefix. Repeating a character cycles through matching items, and the search buffer resets after 500 ms. When `document.dir` is `rtl`, `-start` / `-end` placement and horizontal grid-key navigation are reversed.
 
