@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.6.0
+
+- Added movement-aware long-press handling, optional haptic feedback, and suppression of the follow-up click/context menu.
+- Added selector-based event delegation for dynamic targets.
+- Added custom-content role defaults, dialog focus management, and expanded keyboard navigation.
+- Added rich menu items: HTML or element content, groups, hidden items, checked states, empty text, and item IDs.
+
 ## 2.5.0
 
 - Added element-based anchors, placement options, boundaries, and manual controls.

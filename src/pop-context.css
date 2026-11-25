@@ -1,5 +1,5 @@
 /* ==========================================================================
-   PopContext - Base Stylesheet v2.5.0
+   PopContext - Base Stylesheet v2.6.0
    ========================================================================== */
 
 .pop-context-menu {
@@ -240,6 +240,27 @@
   opacity: 0.4;
   cursor: not-allowed;
   pointer-events: none;
+}
+
+.pop-context-menu .pc-item.is-checked::before {
+  content: "✓";
+  display: inline-block;
+  width: var(--pc-icon-size);
+  flex: 0 0 var(--pc-icon-size);
+  text-align: center;
+}
+
+.pop-context-menu .pc-group-label {
+  padding: 6px 16px 3px;
+  color: var(--pc-text);
+  font-size: 0.85em;
+  font-weight: 600;
+  opacity: 0.7;
+}
+
+.pop-context-menu .pc-empty {
+  padding: 8px 16px;
+  opacity: 0.65;
 }
 
 .pop-context-menu .pc-divider {

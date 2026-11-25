@@ -286,6 +286,42 @@
       </div>
     </div>
 
+    <h2>v2.6.0 の追加機能</h2>
+    <div class="demo-grid">
+      <div class="card">
+        <h3>動的要素への委譲</h3>
+        <p style="margin-bottom: 12px;">後から追加したボタンでも同じインスタンスで開けます。</p>
+        <div id="delegate-root">
+          <button class="btn delegated-item">既存ボタン</button>
+        </div>
+        <button class="btn" id="add-delegated-item">ボタンを追加</button>
+      </div>
+      <div class="card">
+        <h3>グループ・チェック項目</h3>
+        <p style="margin-bottom: 12px;">group、menuitemradio、menuitemcheckbox の例です。</p>
+        <button class="btn" id="demo-advanced-items">項目メニュー</button>
+      </div>
+      <div class="card">
+        <h3>カスタムダイアログ</h3>
+        <p style="margin-bottom: 12px;">入力欄にフォーカスし、矢印キーを使えます。</p>
+        <button class="btn" id="demo-custom-dialog">入力フォーム</button>
+      </div>
+      <div class="card interactive" id="demo-precise-longpress">
+        <h3>移動キャンセル付き長押し</h3>
+        <p>10px 以上動くとキャンセル。対応端末では振動します。</p>
+      </div>
+      <div class="card">
+        <h3>フォーム項目</h3>
+        <p style="margin-bottom: 12px;">項目内の送信ボタンは通常のフォーム動作を維持します。</p>
+        <button class="btn" id="demo-form-item">フォームメニュー</button>
+      </div>
+      <div class="card">
+        <h3>空のメニュー</h3>
+        <p style="margin-bottom: 12px;">有効な項目がない場合の emptyText 表示です。</p>
+        <button class="btn" id="demo-empty-items">空の項目</button>
+      </div>
+    </div>
+
     <!-- コンソールログ -->
     <div class="log-section">
       <div class="log-header">
@@ -454,6 +490,70 @@
       anchor: 'element',
       placement: 'bottom-start',
       items: [{ label: 'リンクの既定動作は抑止されません' }]
+    });
+
+    new PopContext('#delegate-root', {
+      trigger: 'click',
+      delegate: '.delegated-item',
+      anchor: 'element',
+      placement: 'right-start',
+      toggle: true,
+      items: [{ label: '委譲メニュー' }]
+    });
+    document.getElementById('add-delegated-item').addEventListener('click', () => {
+      const button = document.createElement('button');
+      button.className = 'btn delegated-item';
+      button.textContent = '追加ボタン';
+      document.getElementById('delegate-root').appendChild(button);
+    });
+
+    new PopContext('#demo-advanced-items', {
+      trigger: 'click',
+      items: [
+        { group: '表示' },
+        { id: 'compact', label: 'コンパクト表示', role: 'menuitemcheckbox', checked: true },
+        { id: 'sort-name', label: '名前順', role: 'menuitemradio', checked: true },
+        { id: 'sort-date', label: '日付順', role: 'menuitemradio', checked: false },
+        { divider: true },
+        { label: 'この項目は非表示', hidden: true }
+      ]
+    });
+
+    new PopContext('#demo-custom-dialog', {
+      trigger: 'click',
+      customContent: `
+        <form style="padding: 12px; display: grid; gap: 8px; min-width: 220px;">
+          <label for="demo-dialog-input">検索</label>
+          <input id="demo-dialog-input" type="text" placeholder="文字を入力">
+          <button type="button" onclick="log('DIALOG', '検索しました')">検索</button>
+        </form>
+      `
+    });
+
+    new PopContext('#demo-precise-longpress', {
+      trigger: 'longpress',
+      longPressDuration: 500,
+      longPressMoveTolerance: 10,
+      haptic: true,
+      items: [{ label: '長押し成立', onClick: () => log('LONGPRESS', '長押しメニューを選択') }]
+    });
+
+    const formItem = document.createElement('form');
+    formItem.method = 'post';
+    formItem.innerHTML = '<input type="hidden" name="action" value="save"><button type="submit">送信</button>';
+    formItem.addEventListener('submit', event => {
+      event.preventDefault();
+      log('FORM', '送信イベントが発生しました');
+    });
+    new PopContext('#demo-form-item', {
+      trigger: 'click',
+      items: [{ element: formItem }]
+    });
+
+    new PopContext('#demo-empty-items', {
+      trigger: 'click',
+      emptyText: '表示できる項目はありません。',
+      items: [{ label: '非表示', hidden: true }]
     });
   </script>
 </body>

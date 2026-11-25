@@ -78,6 +78,10 @@ new PopContext('#color-btn', {
 | `layout` | `'list'` \| `'grid'` | `'list'` | 表示レイアウト |
 | `columns` | `number` | `3` | グリッドレイアウト時の列数 |
 | `trigger` | `'contextmenu'` \| `'click'` \| `'longpress'` \| `'manual'` | `'contextmenu'` | 起動トリガー |
+| `delegate` | `string` \| `null` | `null` | 親要素上で動的な子要素のイベントを委譲する CSS セレクター |
+| `longPressDuration` | `number` | `500` | 長押し成立までの時間（ms） |
+| `longPressMoveTolerance` | `number` | `10` | この距離を超えて移動した場合に長押しをキャンセル（px） |
+| `haptic` | `boolean` | `false` | 長押し成立時に対応環境で短く振動 |
 | `arrow` | `boolean` | `false` | 吹き出しの尻尾（矢印）を表示するか |
 | `customContent` | `string` \| `HTMLElement` \| `Function` | `null` | メニュー内を自由なHTMLや要素で置き換えるカスタム枠 |
 | `theme` | `'default'` \| `'dark'` \| `'none'` | `'default'` | カラーテーマ |
@@ -98,6 +102,8 @@ new PopContext('#color-btn', {
 | `arrowOffset` | `number` \| `null` | `null` | 矢印の水平位置（px） |
 | `aria` | `object` | `{ haspopup: 'menu', controls: null, expanded: true }` | トリガーに付与する ARIA 属性を制御 |
 | `ariaLabel` | `string` | `''` | メニューの `aria-label` |
+| `role` | `string` \| `null` | `null` | メニューの role。未指定時は items が `menu`、customContent が `dialog` |
+| `emptyText` | `string` | `''` | 有効な項目がない場合に表示する文言 |
 | `onBeforeShow` | `Function` \| `null` | `null` | 表示直前に呼び出すフック |
 
 `trigger` には `'manual'` も指定できます。手動トリガーでは要素イベントを登録せず、`show()` / `hide()` で制御します。`anchor: 'element'` と組み合わせる場合は `setTarget(element)` で表示基準を切り替えられます。
@@ -112,6 +118,28 @@ const menu = new PopContext('#actions', {
 menu.setTarget(document.querySelector('#row-1'));
 menu.show();
 ```
+
+### 項目スキーマ
+
+```javascript
+{
+  id: 'archive',
+  label: 'Archive',
+  icon: 'fa-solid fa-box-archive',
+  shortcut: 'A',
+  role: 'menuitemcheckbox', // 'menuitem' | 'menuitemradio' | 'menuitemcheckbox'
+  checked: false,
+  disabled: false,
+  hidden: false,
+  danger: false,
+  className: '',
+  onClick: (item, event, instance) => {}
+}
+```
+
+項目には `divider: true` または `group: '見出し'` を指定できます。`html` は HTML 文字列をそのまま挿入するため、信頼できる内容だけを指定してください。`element` には `HTMLElement` を渡せます。ノードはメニュー内へ移動し、`destroy()` 時に元の親へは戻りません。また、この項目にはライブラリのクリックハンドラーを付けないため、フォームやボタンの既定動作を妨げません。`checked` は `.is-checked` と `aria-checked` に反映されます。`id` が一致し、新しい項目で `checked` が省略された場合は、既存の checked 状態を引き継ぎます。
+
+`customContent` の既定 role は `dialog` です。表示時は items なら最初の有効項目、customContent なら最初のフォーカス可能な要素へフォーカスします。dialog 内の `Tab` はフォーカスを内部に保ち、menu の `Tab` は閉じてトリガーへ戻ります。`Escape` でも閉じてフォーカスを戻します。
 
 ### インスタンスメソッド
 
@@ -212,6 +240,9 @@ menu.show();
 | `columns` | `number` | `3` | Number of columns for a grid layout. |
 | `trigger` | `'contextmenu'` \| `'click'` \| `'longpress'` \| `'manual'` | `'contextmenu'` | How the menu is opened. |
 | `longPressDuration` | `number` | `500` | Hold duration in milliseconds for the `longpress` trigger. |
+| `longPressMoveTolerance` | `number` | `10` | Cancel a long press when the pointer moves farther than this distance, in pixels. |
+| `haptic` | `boolean` | `false` | Request a short vibration when a long press succeeds, if supported. |
+| `delegate` | `string` \| `null` | `null` | CSS selector for event delegation from the target element or document. |
 | `customContent` | `string` \| `HTMLElement` \| `Function` \| `null` | `null` | Custom content rendered inside the popup. Pass only trusted HTML strings. |
 | `anchor` | `'pointer'` \| `'element'` | `'pointer'` | Position relative to pointer coordinates or the trigger element. |
 | `placement` | `string` | `'bottom-start'` | Preferred side and alignment, or `'auto'`. |
@@ -233,6 +264,8 @@ menu.show();
 | `zIndex` | `number` | `999999` | Popup stacking order. |
 | `aria` | `object` | `{ haspopup: 'menu', controls: null, expanded: true }` | Configure ARIA attributes managed on the trigger. Existing `aria-controls` values are preserved. |
 | `ariaLabel` | `string` | `''` | Accessible label applied to the popup. |
+| `role` | `string` \| `null` | `null` | Popup role. Defaults to `menu` for items and `dialog` for custom content. |
+| `emptyText` | `string` | `''` | Message shown when there are no enabled items. |
 | `onBeforeShow` | `Function` \| `null` | `null` | Called immediately before the menu opens. |
 | `onShow` / `onHide` / `onSelect` | `Function` \| `null` | `null` | Lifecycle and item-selection callbacks. |
 
@@ -250,6 +283,28 @@ menu.show();
 | `destroy()` | Remove the popup and listeners, and restore attributes managed by the instance. Safe to call more than once. |
 
 `setItems()` does not clear or replace `customContent`. Use `setCustomContent()` to switch between custom content and the item list. With `theme: 'none'`, customize the popup using the `--pc-*` CSS variables defined on `.pop-context-menu`.
+
+### Item Schema
+
+```javascript
+{
+  id: 'archive',
+  label: 'Archive',
+  icon: 'fa-solid fa-box-archive',
+  shortcut: 'A',
+  role: 'menuitemcheckbox', // 'menuitem' | 'menuitemradio' | 'menuitemcheckbox'
+  checked: false,
+  disabled: false,
+  hidden: false,
+  danger: false,
+  className: '',
+  onClick: (item, event, instance) => {}
+}
+```
+
+Use `{ divider: true }` for a separator or `{ group: 'Heading' }` for a group label. The `html` field is inserted without sanitization; only use trusted HTML. The `element` field accepts an `HTMLElement`, which is moved into the popup and is not returned to its original parent by `destroy()`. Items with `element` do not receive a library click handler, so native form and button behavior is preserved. `checked` updates `.is-checked` and `aria-checked`. When an updated item has the same `id` and omits `checked`, its previous checked state is retained.
+
+Custom content defaults to `role: 'dialog'`. On open, focus moves to the first enabled item or the first focusable custom-content element. `Tab` stays within a dialog; in a menu it closes the popup and returns focus to the trigger. `Escape` also closes the popup and restores focus.
 
 ---
 

@@ -1,5 +1,5 @@
 /**
- * PopContext v2.5.0
+ * PopContext v2.6.0
  * Lightweight, accessible, multi-trigger custom context menu with element positioning.
  */
 (function (global, factory) {
@@ -48,7 +48,7 @@
   }
 
   function isInsideTarget(inst, target) {
-    return inst.targetEls.some(el => el === target || el.contains(target));
+    return inst._isManagedTrigger(target);
   }
 
   function handleGlobalClick(e) {
@@ -102,6 +102,11 @@
       return;
     }
 
+    if (e.key === 'Tab') {
+      activeInst._handleTabNavigation(e);
+      return;
+    }
+
     if (['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight', 'Home', 'End', 'Enter', ' '].includes(e.key)) {
       activeInst._handleKeyboardNavigation(e);
     }
@@ -115,9 +120,12 @@
         layout: 'list',
         columns: 3,
         trigger: 'contextmenu',
+        delegate: null,
         toggle: false,
         preventDefaultTrigger: true,
         longPressDuration: 500,
+        longPressMoveTolerance: 10,
+        haptic: false,
         anchor: 'pointer',
         placement: 'bottom-start',
         offset: { x: 0, y: 0 },
@@ -133,6 +141,8 @@
         closeOnEscape: true,
         hideOnScroll: true,
         hideOnResize: true,
+        emptyText: '',
+        role: null,
         ariaLabel: '',
         aria: { haspopup: 'menu', controls: null, expanded: true },
         theme: 'default',
@@ -149,6 +159,8 @@
       this._placementExplicit = Object.prototype.hasOwnProperty.call(options, 'placement');
 
       this.targetEls = [];
+      this.delegateRoot = null;
+      this._sourceTarget = target;
       this.menuEl = null;
       this.arrowEl = null;
       this.visible = false;
@@ -156,16 +168,22 @@
       this.lastPosition = { x: 0, y: 0 };
       this.triggerOrigin = null;
       this.longPressTimer = null;
+      this.longPressStart = null;
+      this.longPressIdentifier = null;
+      this.longPressTriggeredAt = 0;
+      this._suppressNextContextMenu = false;
+      this._suppressNextClick = false;
       this.currentFlipState = { flipX: false, flipY: false };
       this._originalAttributes = new Map();
       this._originalOpenClasses = new Map();
+      this._managedTargets = new Set();
       this._rafId = null;
       this._rafIsTimeout = false;
       this._showing = false;
       this._destroyed = false;
 
       this._initTargets(target);
-      if (this.options.anchor === 'element') this.triggerOrigin = this.targetEls[0] || null;
+      this.triggerOrigin = this.targetEls[0] || null;
       if (typeof document !== 'undefined') {
         this._createMenuElement();
         this._bindTargetEvents();
@@ -178,6 +196,18 @@
 
     _initTargets(target) {
       if (typeof document === 'undefined') return;
+      this.delegateRoot = null;
+      this.targetEls = [];
+      if (this.options.delegate) {
+        if (typeof target === 'string') {
+          this.delegateRoot = document.querySelector(target);
+        } else if (target && (target.nodeType === 1 || target.nodeType === 9)) {
+          this.delegateRoot = target;
+        }
+        if (!this.delegateRoot) throw new Error('PopContext: delegate target was not found.');
+        this.delegateRoot.querySelectorAll(this.options.delegate);
+        return;
+      }
       if (typeof target === 'string') {
         this.targetEls = Array.from(document.querySelectorAll(target));
       } else if (target && target.nodeType === 1) {
@@ -185,6 +215,24 @@
       } else if (target && (typeof NodeList !== 'undefined' && target instanceof NodeList || Array.isArray(target))) {
         this.targetEls = Array.from(target).filter(el => el && el.nodeType === 1);
       }
+    }
+
+    _getRole() {
+      return this.options.role || (this.options.customContent ? 'dialog' : 'menu');
+    }
+
+    _resolveDelegateTarget(target) {
+      if (!this.delegateRoot || !this.options.delegate) return null;
+      const element = target && target.nodeType === 1 ? target : target && target.parentElement;
+      const match = element && element.closest(this.options.delegate);
+      if (!match) return null;
+      if (this.delegateRoot.nodeType === 9 || this.delegateRoot === match || this.delegateRoot.contains(match)) return match;
+      return null;
+    }
+
+    _isManagedTrigger(target) {
+      if (this.delegateRoot) return Boolean(this._resolveDelegateTarget(target));
+      return this.targetEls.some(el => el === target || el.contains(target));
     }
 
     _createMenuElement() {
@@ -214,7 +262,7 @@
       const layoutClass = this.options.customContent ? 'pc-layout-custom' : `pc-layout-${this.options.layout === 'grid' ? 'grid' : 'list'}`;
       const classes = ['pop-context-menu', themeClass, layoutClass, this.options.arrow ? 'has-arrow' : '', this.options.className].filter(Boolean);
       this.menuEl.className = classes.join(' ');
-      this.menuEl.setAttribute('role', 'menu');
+      this.menuEl.setAttribute('role', this._getRole());
       if (this.options.ariaLabel) this.menuEl.setAttribute('aria-label', this.options.ariaLabel);
       else this.menuEl.removeAttribute('aria-label');
       this.menuEl.style.zIndex = String(this.options.zIndex);
@@ -248,6 +296,7 @@
       if (this.options.customContent) {
         const customContainer = document.createElement('div');
         customContainer.className = 'pc-custom-container';
+        if (this._getRole() === 'menu') customContainer.setAttribute('role', 'none');
         if (typeof this.options.customContent === 'string') {
           customContainer.innerHTML = this.options.customContent;
         } else if (this.options.customContent && this.options.customContent.nodeType === 1) {
@@ -266,7 +315,16 @@
       const ul = document.createElement('ul');
       ul.className = 'pc-item-list';
       ul.setAttribute('role', 'presentation');
+      const hasEnabledItems = items.some(item => !item.hidden && !item.disabled && !item.divider && !item.group);
+      if (!hasEnabledItems && this.options.emptyText) {
+        const empty = document.createElement('li');
+        empty.className = 'pc-empty';
+        empty.setAttribute('role', 'presentation');
+        empty.textContent = this.options.emptyText;
+        ul.appendChild(empty);
+      }
       items.forEach((item, index) => {
+        if (item.hidden) return;
         if (item.divider) {
           const divider = document.createElement('li');
           divider.className = 'pc-divider';
@@ -274,33 +332,52 @@
           ul.appendChild(divider);
           return;
         }
+        if (item.group) {
+          const group = document.createElement('li');
+          group.className = 'pc-group-label';
+          group.setAttribute('role', 'presentation');
+          group.textContent = item.group;
+          ul.appendChild(group);
+          return;
+        }
 
         const li = document.createElement('li');
-        li.className = `pc-item ${item.disabled ? 'is-disabled' : ''} ${item.danger ? 'pc-danger' : ''} ${item.className || ''}`.trim();
-        li.setAttribute('role', 'menuitem');
+        li.className = `pc-item ${item.disabled ? 'is-disabled' : ''} ${item.danger ? 'pc-danger' : ''} ${item.checked ? 'is-checked' : ''} ${item.className || ''}`.trim();
+        const itemRole = ['menuitem', 'menuitemradio', 'menuitemcheckbox'].includes(item.role) ? item.role : 'menuitem';
+        li.setAttribute('role', itemRole);
         li.setAttribute('tabindex', '-1');
         li.dataset.index = index;
+        if (item.id != null) li.dataset.id = item.id;
         if (item.disabled) li.setAttribute('aria-disabled', 'true');
+        if (itemRole === 'menuitemradio' || itemRole === 'menuitemcheckbox') {
+          li.setAttribute('aria-checked', item.checked ? 'true' : 'false');
+        }
 
-        if (item.icon) {
+        if (item.element && item.element.nodeType === 1) {
+          li.appendChild(item.element);
+        } else if (typeof item.html === 'string') {
+          li.innerHTML = item.html;
+        } else if (item.icon) {
           const iconContainer = document.createElement('span');
           iconContainer.className = 'pc-icon';
           this._renderIconContent(iconContainer, item.icon);
           li.appendChild(iconContainer);
         }
-        if (item.label) {
-          const labelSpan = document.createElement('span');
-          labelSpan.className = 'pc-label';
-          labelSpan.textContent = item.label;
-          li.appendChild(labelSpan);
+        if (!item.element && typeof item.html !== 'string') {
+          if (item.label) {
+            const labelSpan = document.createElement('span');
+            labelSpan.className = 'pc-label';
+            labelSpan.textContent = item.label;
+            li.appendChild(labelSpan);
+          }
+          if (item.shortcut && this.options.layout !== 'grid') {
+            const shortcutSpan = document.createElement('span');
+            shortcutSpan.className = 'pc-shortcut';
+            shortcutSpan.textContent = item.shortcut;
+            li.appendChild(shortcutSpan);
+          }
         }
-        if (item.shortcut && this.options.layout !== 'grid') {
-          const shortcutSpan = document.createElement('span');
-          shortcutSpan.className = 'pc-shortcut';
-          shortcutSpan.textContent = item.shortcut;
-          li.appendChild(shortcutSpan);
-        }
-        if (!item.disabled) {
+        if (!item.disabled && !item.element) {
           li.addEventListener('click', e => this._handleItemClick(item, e));
           li.addEventListener('mouseenter', () => this._setFocusedIndex(this._getEnabledItems().indexOf(li)));
         }
@@ -341,27 +418,35 @@
       this._onContextMenu = this._onContextMenu.bind(this);
       this._onClick = this._onClick.bind(this);
       this._onTouchStart = this._onTouchStart.bind(this);
+      this._onTouchMove = this._onTouchMove.bind(this);
       this._onTouchEnd = this._onTouchEnd.bind(this);
       if (this.options.trigger === 'manual') return;
-      this.targetEls.forEach(el => {
+      const roots = this.delegateRoot ? [this.delegateRoot] : this.targetEls;
+      roots.forEach(el => {
         if (this.options.trigger === 'contextmenu') {
           el.addEventListener('contextmenu', this._onContextMenu);
         } else if (this.options.trigger === 'click') {
           el.addEventListener('click', this._onClick);
         } else if (this.options.trigger === 'longpress') {
           el.addEventListener('touchstart', this._onTouchStart, { passive: true });
+          el.addEventListener('touchmove', this._onTouchMove, { passive: true });
           el.addEventListener('touchend', this._onTouchEnd);
+          el.addEventListener('touchcancel', this._onTouchEnd);
           el.addEventListener('contextmenu', this._onContextMenu);
+          el.addEventListener('click', this._onClick);
         }
       });
     }
 
     _unbindTargetEvents() {
-      this.targetEls.forEach(el => {
+      const roots = this.delegateRoot ? [this.delegateRoot] : this.targetEls;
+      roots.forEach(el => {
         el.removeEventListener('contextmenu', this._onContextMenu);
         el.removeEventListener('click', this._onClick);
         el.removeEventListener('touchstart', this._onTouchStart);
+        el.removeEventListener('touchmove', this._onTouchMove);
         el.removeEventListener('touchend', this._onTouchEnd);
+        el.removeEventListener('touchcancel', this._onTouchEnd);
       });
     }
 
@@ -379,8 +464,13 @@
     }
 
     _syncTargetAttributes() {
-      if (!this.options.aria) return;
-      this.targetEls.forEach(el => {
+      new Set([...this.targetEls, ...this._managedTargets]).forEach(el => this._applyTargetAttributes(el));
+    }
+
+    _applyTargetAttributes(el) {
+      if (!el) return;
+      this._managedTargets.add(el);
+      if (this.options.aria) {
         if (this.options.aria.haspopup) this._recordAttribute(el, 'aria-haspopup', this.options.aria.haspopup);
         else this._restoreManagedAttribute(el, 'aria-haspopup');
         if (this.options.aria.controls && !el.hasAttribute('aria-controls')) {
@@ -390,13 +480,13 @@
         }
         if (this.options.aria.expanded) this._recordAttribute(el, 'aria-expanded', this.visible && el === this.triggerOrigin ? 'true' : 'false');
         else this._restoreManagedAttribute(el, 'aria-expanded');
-        if (this.options.openClass) {
-          if (!this._originalOpenClasses.has(el)) {
-            this._originalOpenClasses.set(el, el.classList.contains(this.options.openClass));
-          }
-          el.classList.toggle(this.options.openClass, this.visible && el === this.triggerOrigin);
+      }
+      if (this.options.openClass) {
+        if (!this._originalOpenClasses.has(el)) {
+          this._originalOpenClasses.set(el, el.classList.contains(this.options.openClass));
         }
-      });
+        el.classList.toggle(this.options.openClass, this.visible && el === this.triggerOrigin);
+      }
     }
 
     _restoreManagedAttribute(el, name) {
@@ -412,15 +502,13 @@
     }
 
     _writeExpanded(value) {
-      if (!this.options.aria.expanded) return;
-      this.targetEls.forEach(el => {
-        this._recordAttribute(el, 'aria-expanded', value && el === this.triggerOrigin ? 'true' : 'false');
-      });
+      if (!this.options.aria || !this.options.aria.expanded) return;
+      this._managedTargets.forEach(el => this._recordAttribute(el, 'aria-expanded', value && el === this.triggerOrigin ? 'true' : 'false'));
     }
 
     _writeOpenClass(value) {
       if (!this.options.openClass) return;
-      this.targetEls.forEach(el => {
+      this._managedTargets.forEach(el => {
         if (!this._originalOpenClasses.has(el)) {
           this._originalOpenClasses.set(el, el.classList.contains(this.options.openClass));
         }
@@ -441,18 +529,48 @@
         if (!hadClass) el.classList.remove(this.options.openClass);
       });
       this._originalOpenClasses.clear();
+      this._managedTargets.clear();
     }
 
     _onContextMenu(e) {
+      const target = this._getEventTrigger(e);
+      if (!target) return;
+      if (this.options.trigger === 'longpress' && this._suppressNextContextMenu && target === this.triggerOrigin) {
+        if (Date.now() - this.longPressTriggeredAt < 500) {
+          e.preventDefault();
+          this._suppressNextContextMenu = false;
+          return;
+        }
+        this._suppressNextContextMenu = false;
+        this._suppressNextClick = false;
+      }
       e.preventDefault();
       this.lastPosition = { x: e.clientX, y: e.clientY };
-      this._toggleOrShow(e.currentTarget);
+      this._applyTargetAttributes(target);
+      this._toggleOrShow(target);
     }
 
     _onClick(e) {
+      const target = this._getEventTrigger(e);
+      if (!target) return;
+      if (this.options.trigger === 'longpress') {
+        if (target === this.triggerOrigin && this._suppressNextClick && Date.now() - this.longPressTriggeredAt < 500) {
+          e.preventDefault();
+          this._suppressNextClick = false;
+        } else if (Date.now() - this.longPressTriggeredAt >= 500 && target === this.triggerOrigin) {
+          this._suppressNextContextMenu = false;
+          this._suppressNextClick = false;
+        }
+        return;
+      }
       if (this.options.preventDefaultTrigger) e.preventDefault();
       this.lastPosition = { x: e.clientX, y: e.clientY };
-      this._toggleOrShow(e.currentTarget);
+      this._applyTargetAttributes(target);
+      this._toggleOrShow(target);
+    }
+
+    _getEventTrigger(e) {
+      return this.delegateRoot ? this._resolveDelegateTarget(e.target) : e.currentTarget;
     }
 
     _toggleOrShow(target) {
@@ -474,12 +592,38 @@
         return;
       }
       const touch = e.touches[0];
-      this.triggerOrigin = e.currentTarget;
       this._cancelLongPress();
+      const target = this._getEventTrigger(e);
+      if (!target) return;
+      this.triggerOrigin = target;
+      this._applyTargetAttributes(target);
+      this.longPressStart = { x: touch.clientX, y: touch.clientY };
+      this.longPressIdentifier = touch.identifier;
       this.longPressTimer = setTimeout(() => {
         this.longPressTimer = null;
+        this.longPressTriggeredAt = Date.now();
+        this._suppressNextContextMenu = true;
+        this._suppressNextClick = true;
         this.show(touch.clientX, touch.clientY);
+        this.longPressStart = null;
+        if (this.options.haptic && typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+          navigator.vibrate(10);
+        }
       }, this.options.longPressDuration);
+    }
+
+    _onTouchMove(e) {
+      if (!this.longPressTimer || !this.longPressStart || e.touches.length !== 1) {
+        this._cancelLongPress();
+        return;
+      }
+      const touch = Array.from(e.touches).find(item => item.identifier === this.longPressIdentifier);
+      if (!touch) {
+        this._cancelLongPress();
+        return;
+      }
+      const distance = Math.hypot(touch.clientX - this.longPressStart.x, touch.clientY - this.longPressStart.y);
+      if (distance > this.options.longPressMoveTolerance) this._cancelLongPress();
     }
 
     _onTouchEnd() {
@@ -489,6 +633,8 @@
     _cancelLongPress() {
       if (this.longPressTimer) clearTimeout(this.longPressTimer);
       this.longPressTimer = null;
+      this.longPressStart = null;
+      this.longPressIdentifier = null;
     }
 
     show(x, y) {
@@ -514,6 +660,7 @@
       this._reposition();
       if (!this.visible) return;
       this._setFocusedIndex(-1);
+      this._focusInitial();
       if (typeof this.options.onShow === 'function') {
         this.options.onShow.call(this, { x: this.lastPosition.x, y: this.lastPosition.y });
       }
@@ -717,16 +864,24 @@
       if (this._destroyed) return;
       this._unbindTargetEvents();
       this._restoreTargetState();
-      this.targetEls = [];
+      this._sourceTarget = target;
       this._initTargets(target);
-      if (this.options.anchor === 'element') this.triggerOrigin = this.targetEls[0] || null;
+      if (!this.targetEls.includes(this.triggerOrigin)) this.triggerOrigin = this.targetEls[0] || null;
       this._bindTargetEvents();
       this._syncTargetAttributes();
       if (this.visible) this._reposition();
     }
 
     setItems(items) {
-      this.options.items = Array.isArray(items) ? items : [];
+      const previousChecked = new Map((this.options.items || [])
+        .filter(item => item.id != null && typeof item.checked === 'boolean')
+        .map(item => [item.id, item.checked]));
+      this.options.items = Array.isArray(items) ? items.map(item => {
+        if (item.id != null && !Object.prototype.hasOwnProperty.call(item, 'checked') && previousChecked.has(item.id)) {
+          return Object.assign({}, item, { checked: previousChecked.get(item.id) });
+        }
+        return item;
+      }) : [];
       this._renderContent();
       if (this.visible) this._reposition();
     }
@@ -741,6 +896,7 @@
     setOptions(patch = {}) {
       if (!patch || typeof patch !== 'object') return;
       const oldTrigger = this.options.trigger;
+      const oldDelegate = this.options.delegate;
       const oldOpenClass = this.options.openClass;
       const safePatch = Object.assign({}, patch);
       delete safePatch.items;
@@ -752,13 +908,19 @@
         if (this.options.syncHidden) this.menuEl.hidden = !this.visible;
         else this.menuEl.hidden = false;
       }
-      if (oldTrigger !== this.options.trigger) {
+      if (oldTrigger !== this.options.trigger || oldDelegate !== this.options.delegate) {
         this._cancelLongPress();
         this._unbindTargetEvents();
+        if (oldDelegate !== this.options.delegate) {
+          this._restoreTargetState();
+          this._initTargets(this._sourceTarget);
+          if (!this.targetEls.includes(this.triggerOrigin)) this.triggerOrigin = this.targetEls[0] || null;
+        }
         this._bindTargetEvents();
+        this._syncTargetAttributes();
       }
       if (oldOpenClass !== this.options.openClass) {
-        this.targetEls.forEach(el => {
+        this._managedTargets.forEach(el => {
           if (oldOpenClass && !this._originalOpenClasses.get(el)) el.classList.remove(oldOpenClass);
         });
         this._originalOpenClasses.clear();
@@ -786,12 +948,72 @@
     _handleItemClick(item, e) {
       if (item.disabled) return;
       if (this.options.closeOnSelect) this.hide({ restoreFocus: true });
-      if (typeof item.onClick === 'function') item.onClick.call(this, item, e);
+      if (typeof item.onClick === 'function') item.onClick.call(this, item, e, this);
       if (typeof this.options.onSelect === 'function') this.options.onSelect.call(this, item, e);
     }
 
     _getEnabledItems() {
-      return this.menuEl ? Array.from(this.menuEl.querySelectorAll('.pc-item:not(.is-disabled)')) : [];
+      if (!this.menuEl) return [];
+      return Array.from(this.menuEl.querySelectorAll('.pc-item:not(.is-disabled)')).filter(el => {
+        const item = this.options.items[Number(el.dataset.index)];
+        return !item || !item.element;
+      });
+    }
+
+    _getFocusableElements(container) {
+      if (!container) return [];
+      const selector = 'a[href], button:not([disabled]), input:not([type="hidden"]):not([disabled]), select:not([disabled]), textarea:not([disabled]), [contenteditable="true"], [tabindex]:not([tabindex="-1"])';
+      return Array.from(container.querySelectorAll(selector)).filter(el => {
+        if (el.disabled || el.hidden || el.getAttribute('aria-hidden') === 'true' || (el.closest && el.closest('[hidden]'))) return false;
+        if (typeof window !== 'undefined' && window.getComputedStyle) {
+          const style = window.getComputedStyle(el);
+          if (style.display === 'none' || style.visibility === 'hidden') return false;
+        }
+        return true;
+      });
+    }
+
+    _focusInitial() {
+      if (this.options.customContent) {
+        const container = this.menuEl.querySelector('.pc-custom-container');
+        const focusable = this._getFocusableElements(container)[0];
+        if (focusable) focusable.focus();
+        else this.menuEl.focus();
+        return;
+      }
+      if (this._getEnabledItems().length) this._setFocusedIndex(0);
+      else this.menuEl.focus();
+    }
+
+    _handleTabNavigation(e) {
+      const role = this._getRole();
+      if (role === 'menu') {
+        e.preventDefault();
+        this.hide({ restoreFocus: false });
+        this._restoreFocus();
+        return;
+      }
+      if (role !== 'dialog') return;
+      const container = this.options.customContent ? this.menuEl.querySelector('.pc-custom-container') : this.menuEl;
+      const focusable = this._getFocusableElements(container);
+      if (!focusable.length) {
+        e.preventDefault();
+        this.menuEl.focus();
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const activeIndex = focusable.indexOf(document.activeElement);
+      if (activeIndex === -1) {
+        e.preventDefault();
+        (e.shiftKey ? last : first).focus();
+      } else if (e.shiftKey && (document.activeElement === first || document.activeElement === this.menuEl)) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && (document.activeElement === last || document.activeElement === this.menuEl)) {
+        e.preventDefault();
+        first.focus();
+      }
     }
 
     _setFocusedIndex(index) {
@@ -808,9 +1030,15 @@
     }
 
     _handleKeyboardNavigation(e) {
-      if (!this.menuEl) return;
+      if (!this.menuEl || this.options.customContent || this._getRole() === 'dialog') return;
       const items = this._getEnabledItems();
       if (items.length === 0) return;
+      const navigable = ['ArrowDown', 'ArrowUp', 'Home', 'End', 'Enter', ' '].includes(e.key) ||
+        (this.options.layout === 'grid' && ['ArrowLeft', 'ArrowRight'].includes(e.key));
+      if (!navigable) return;
+      const target = e.target && e.target.nodeType === 1 ? e.target : e.target && e.target.parentElement;
+      const owner = target && target.closest('.pc-item');
+      if (owner && this.options.items[Number(owner.dataset.index)] && this.options.items[Number(owner.dataset.index)].element) return;
       e.preventDefault();
       const cols = this.options.layout === 'grid' ? (this.options.columns || 3) : 1;
       if (e.key === 'ArrowDown') this._setFocusedIndex(Math.min(items.length - 1, this.focusedIndex < 0 ? 0 : this.focusedIndex + cols));
