@@ -1,6 +1,6 @@
 {
   "name": "pop-menu-js",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "description": "Lightweight, accessible, multi-trigger popup and context menu library.",
   "main": "src/pop-menu.js",
   "style": "src/pop-menu.css",

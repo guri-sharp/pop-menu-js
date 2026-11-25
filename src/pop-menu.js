@@ -1,5 +1,5 @@
 /**
- * PopMenu JS v3.0.0
+ * PopMenu JS v3.0.1
  * Lightweight, accessible, multi-trigger custom context menu with element positioning.
  */
 (function (global, factory) {
@@ -506,7 +506,7 @@
         this.backdropEl.removeEventListener('transitioncancel', this._onBackdropTransitionCancel);
         this.backdropEl.remove();
         this.backdropEl = null;
-        this._markClosingDone('backdrop');
+        this._markClosingDone('backdrop', this._closing && this._closing.token);
       }
 
       if (this.backdropEl) {

@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.0.1
+
+- Fixed sheet close completion stalling until the fallback timer when the backdrop is removed during the closing animation (for example, `setOptions({ backdrop: false })` or a `presentation` change).
+
 ## 3.0.0
 
 - **Breaking:** Renamed the package from `pop-context` to `pop-menu-js` and the public constructor/global from `PopContext` to `PopMenu`.
