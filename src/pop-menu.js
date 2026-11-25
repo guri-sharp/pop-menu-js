@@ -1,5 +1,5 @@
 /**
- * PopContext v2.9.0
+ * PopMenu JS v3.0.0
  * Lightweight, accessible, multi-trigger custom context menu with element positioning.
  */
 (function (global, factory) {
@@ -8,7 +8,7 @@
   } else if (typeof define === 'function' && define.amd) {
     define(factory);
   } else {
-    global.PopContext = factory();
+    global.PopMenu = factory();
   }
 }(typeof window !== 'undefined' ? window : this, function () {
   'use strict';
@@ -51,9 +51,9 @@
       overflow: getInlineStyle(root, 'overflow'),
       scrollbarGutter: getInlineStyle(root, 'scrollbar-gutter'),
       paddingRight: getInlineStyle(body, 'padding-right'),
-      addedClass: !root.classList.contains('pc-scroll-locked')
+      addedClass: !root.classList.contains('pm-scroll-locked')
     };
-    root.classList.add('pc-scroll-locked');
+    root.classList.add('pm-scroll-locked');
     root.style.setProperty('overflow', 'hidden');
     if (supportsGutter) {
       root.style.setProperty('scrollbar-gutter', 'stable');
@@ -75,7 +75,7 @@
     restoreInlineStyle(snapshot.root, 'overflow', snapshot.overflow);
     restoreInlineStyle(snapshot.root, 'scrollbar-gutter', snapshot.scrollbarGutter);
     restoreInlineStyle(snapshot.body, 'padding-right', snapshot.paddingRight);
-    if (snapshot.addedClass) snapshot.root.classList.remove('pc-scroll-locked');
+    if (snapshot.addedClass) snapshot.root.classList.remove('pm-scroll-locked');
   }
 
   function bindGlobalEvents() {
@@ -210,7 +210,7 @@
     }
   }
 
-  class PopContext {
+  class PopMenu {
     constructor(target, options = {}) {
       this.options = Object.assign({
         items: [],
@@ -341,24 +341,24 @@
 
     static autoInit(root = typeof document !== 'undefined' ? document : null) {
       if (!root || (root.nodeType !== 1 && root.nodeType !== 9) || typeof root.querySelectorAll !== 'function') {
-        throw new TypeError('PopContext.autoInit: root must be a Document or Element.');
+        throw new TypeError('PopMenu.autoInit: root must be a Document or Element.');
       }
       if (declarativeInstances.has(root)) return declarativeInstances.get(root);
 
-      const instance = new PopContext(root, {
+      const instance = new PopMenu(root, {
         trigger: 'click',
-        delegate: '[data-pop-context]',
+        delegate: '[data-pop-menu]',
         anchor: 'element',
         placement: 'bottom-start',
         onBeforeShow() {
           const trigger = this.triggerOrigin;
-          if (!trigger) throw new Error('PopContext.autoInit: show() requires an active data-pop-context trigger.');
-          const selector = trigger.getAttribute('data-pop-context-items');
+          if (!trigger) throw new Error('PopMenu.autoInit: show() requires an active data-pop-menu trigger.');
+          const selector = trigger.getAttribute('data-pop-menu-items');
           const template = selector ? trigger.ownerDocument.querySelector(selector) : null;
           if (selector && (!template || template.tagName !== 'TEMPLATE' || !template.content)) {
-            throw new Error(`PopContext.autoInit: item template "${selector}" was not found.`);
+            throw new Error(`PopMenu.autoInit: item template "${selector}" was not found.`);
           }
-          this.options.placement = trigger.getAttribute('data-pop-context-placement') || 'bottom-start';
+          this.options.placement = trigger.getAttribute('data-pop-menu-placement') || 'bottom-start';
           const itemElements = template ? template.content.querySelectorAll('[data-pop-item]') : [];
           this.setItems(Array.from(itemElements, element => {
             if (element.hasAttribute('data-pop-divider')) return { divider: true };
@@ -417,7 +417,7 @@
         } else if (target && (target.nodeType === 1 || target.nodeType === 9)) {
           this.delegateRoot = target;
         }
-        if (!this.delegateRoot) throw new Error('PopContext: delegate target was not found.');
+        if (!this.delegateRoot) throw new Error('PopMenu: delegate target was not found.');
         this.delegateRoot.querySelectorAll(this.options.delegate);
         return;
       }
@@ -446,7 +446,7 @@
       if (!hasConflict) return;
       this._warnedSheetOptions = true;
       if (typeof console !== 'undefined' && console.warn) {
-        console.warn('PopContext: anchor, placement, and arrow options are ignored by sheet presentation.');
+        console.warn('PopMenu: anchor, placement, and arrow options are ignored by sheet presentation.');
       }
     }
 
@@ -467,7 +467,7 @@
     _createMenuElement() {
       if (typeof document === 'undefined') return;
       this.menuEl = document.createElement('div');
-      this.menuEl.id = `pop-context-menu-${++menuId}`;
+      this.menuEl.id = `pop-menu-${++menuId}`;
       this.arrowEl = null;
       Object.assign(this.menuEl.style, {
         position: 'fixed',
@@ -494,7 +494,7 @@
       const needsBackdrop = this.options.presentation === 'sheet' && this.options.backdrop;
       if (needsBackdrop && !this.backdropEl) {
         this.backdropEl = document.createElement('div');
-        this.backdropEl.className = 'pc-sheet-backdrop';
+        this.backdropEl.className = 'pm-sheet-backdrop';
         this.backdropEl.setAttribute('aria-hidden', 'true');
         this.backdropEl.style.position = 'fixed';
         this.backdropEl.style.inset = '0';
@@ -578,10 +578,10 @@
     _updateMenuAttributes() {
       if (!this.menuEl) return;
       const themeClass = this.options.theme && this.options.theme !== 'none' ? `theme-${this.options.theme}` : '';
-      const layoutClass = this.options.customContent ? 'pc-layout-custom' : `pc-layout-${this.options.layout === 'grid' ? 'grid' : 'list'}`;
+      const layoutClass = this.options.customContent ? 'pm-layout-custom' : `pm-layout-${this.options.layout === 'grid' ? 'grid' : 'list'}`;
       const sheet = this.options.presentation === 'sheet';
       const showArrow = this.options.arrow && !sheet;
-      const classes = ['pop-context-menu', themeClass, layoutClass, showArrow ? 'has-arrow' : '', sheet ? 'pc-presentation-sheet' : '', this.options.className].filter(Boolean);
+      const classes = ['pop-menu', themeClass, layoutClass, showArrow ? 'has-arrow' : '', sheet ? 'pm-presentation-sheet' : '', this.options.className].filter(Boolean);
       this.menuEl.className = classes.join(' ');
       this.menuEl.setAttribute('role', this._getRole());
       if (sheet && this.options.backdrop) this.menuEl.setAttribute('aria-modal', 'true');
@@ -590,23 +590,23 @@
       else this.menuEl.removeAttribute('aria-label');
       this.menuEl.style.zIndex = String(this.options.zIndex);
       if (this.options.layout === 'grid') {
-        this.menuEl.style.setProperty('--pc-columns', this.options.columns);
+        this.menuEl.style.setProperty('--pm-columns', this.options.columns);
       } else {
-        this.menuEl.style.removeProperty('--pc-columns');
+        this.menuEl.style.removeProperty('--pm-columns');
       }
 
       if (showArrow && !this.arrowEl) {
         this.arrowEl = document.createElement('div');
-        this.arrowEl.className = 'pc-arrow';
+        this.arrowEl.className = 'pm-arrow';
         this.menuEl.insertBefore(this.arrowEl, this.menuEl.firstChild);
       } else if (!showArrow && this.arrowEl) {
         this.arrowEl.remove();
         this.arrowEl = null;
       }
       if (this.arrowEl && showArrow && this.options.arrowOffset != null) {
-        this.menuEl.style.setProperty('--pc-arrow-offset', `${Number(this.options.arrowOffset)}px`);
+        this.menuEl.style.setProperty('--pm-arrow-offset', `${Number(this.options.arrowOffset)}px`);
       } else if (this.menuEl) {
-        this.menuEl.style.removeProperty('--pc-arrow-offset');
+        this.menuEl.style.removeProperty('--pm-arrow-offset');
       }
     }
 
@@ -619,12 +619,12 @@
 
       if (this.options.presentation === 'sheet') {
         this.sheetHandleEl = document.createElement('div');
-        this.sheetHandleEl.className = `pc-sheet-handle${this.options.swipeToDismiss ? '' : ' is-close-only'}`;
+        this.sheetHandleEl.className = `pm-sheet-handle${this.options.swipeToDismiss ? '' : ' is-close-only'}`;
         this.sheetHandleEl.setAttribute('role', 'button');
         this.sheetHandleEl.setAttribute('tabindex', '0');
         this.sheetHandleEl.setAttribute('aria-label', this.options.sheetLabel || '閉じる');
         const handleBar = document.createElement('span');
-        handleBar.className = 'pc-sheet-handle-bar';
+        handleBar.className = 'pm-sheet-handle-bar';
         handleBar.setAttribute('aria-hidden', 'true');
         this.sheetHandleEl.appendChild(handleBar);
         if (this.options.swipeToDismiss) {
@@ -638,7 +638,7 @@
 
       if (this.options.customContent) {
         const customContainer = document.createElement('div');
-        customContainer.className = 'pc-custom-container';
+        customContainer.className = 'pm-custom-container';
         if (this._getRole() === 'menu') customContainer.setAttribute('role', 'none');
         if (typeof this.options.customContent === 'string') {
           customContainer.innerHTML = this.options.customContent;
@@ -656,12 +656,12 @@
 
     _renderItems(items) {
       const ul = document.createElement('ul');
-      ul.className = 'pc-item-list';
+      ul.className = 'pm-item-list';
       ul.setAttribute('role', 'presentation');
       const hasEnabledItems = items.some(item => !item.hidden && !item.disabled && !item.divider && !item.group);
       if (!hasEnabledItems && this.options.emptyText) {
         const empty = document.createElement('li');
-        empty.className = 'pc-empty';
+        empty.className = 'pm-empty';
         empty.setAttribute('role', 'presentation');
         empty.textContent = this.options.emptyText;
         ul.appendChild(empty);
@@ -670,14 +670,14 @@
         if (item.hidden) return;
         if (item.divider) {
           const divider = document.createElement('li');
-          divider.className = 'pc-divider';
+          divider.className = 'pm-divider';
           divider.setAttribute('role', 'separator');
           ul.appendChild(divider);
           return;
         }
         if (item.group) {
           const group = document.createElement('li');
-          group.className = 'pc-group-label';
+          group.className = 'pm-group-label';
           group.setAttribute('role', 'presentation');
           group.textContent = item.group;
           ul.appendChild(group);
@@ -685,7 +685,7 @@
         }
 
         const li = document.createElement('li');
-        li.className = `pc-item ${item.disabled ? 'is-disabled' : ''} ${item.danger ? 'pc-danger' : ''} ${item.checked ? 'is-checked' : ''} ${item.className || ''}`.trim();
+        li.className = `pm-item ${item.disabled ? 'is-disabled' : ''} ${item.danger ? 'pm-danger' : ''} ${item.checked ? 'is-checked' : ''} ${item.className || ''}`.trim();
         const itemRole = ['menuitem', 'menuitemradio', 'menuitemcheckbox'].includes(item.role) ? item.role : 'menuitem';
         li.setAttribute('role', itemRole);
         li.setAttribute('tabindex', '-1');
@@ -702,20 +702,20 @@
           li.innerHTML = item.html;
         } else if (item.icon) {
           const iconContainer = document.createElement('span');
-          iconContainer.className = 'pc-icon';
+          iconContainer.className = 'pm-icon';
           this._renderIconContent(iconContainer, item.icon);
           li.appendChild(iconContainer);
         }
         if (!item.element && typeof item.html !== 'string') {
           if (item.label) {
             const labelSpan = document.createElement('span');
-            labelSpan.className = 'pc-label';
+            labelSpan.className = 'pm-label';
             labelSpan.textContent = item.label;
             li.appendChild(labelSpan);
           }
           if (item.shortcut && this.options.layout !== 'grid') {
             const shortcutSpan = document.createElement('span');
-            shortcutSpan.className = 'pc-shortcut';
+            shortcutSpan.className = 'pm-shortcut';
             shortcutSpan.textContent = item.shortcut;
             li.appendChild(shortcutSpan);
           }
@@ -736,7 +736,7 @@
         const img = document.createElement('img');
         img.src = trimmed;
         img.alt = '';
-        img.className = 'pc-icon-img';
+        img.className = 'pm-icon-img';
         container.appendChild(img);
       } else if (trimmed.startsWith('<svg') && trimmed.endsWith('</svg>') && typeof DOMParser !== 'undefined') {
         const parser = new DOMParser();
@@ -1120,13 +1120,13 @@
 
     _validateDetents(values) {
       if (!Array.isArray(values) || values.length === 0) {
-        throw new TypeError('PopContext: detents must be a non-empty array.');
+        throw new TypeError('PopMenu: detents must be a non-empty array.');
       }
       const isValid = value => value === 'content' || value === 'half' || value === 'full' ||
         (typeof value === 'number' && Number.isFinite(value) && value > 0);
       if (values.some(value => !isValid(value))) {
         const invalid = values.find(value => !isValid(value));
-        throw new TypeError(`PopContext: invalid sheet detent "${String(invalid)}".`);
+        throw new TypeError(`PopMenu: invalid sheet detent "${String(invalid)}".`);
       }
       return Array.from(new Set(values));
     }
@@ -1150,7 +1150,7 @@
       const detents = this._getDetents();
       if (!detents.length) {
         this.currentDetent = 'content';
-        this.menuEl.style.setProperty('--pc-sheet-height', 'auto');
+        this.menuEl.style.setProperty('--pm-sheet-height', 'auto');
         return;
       }
       if (!detents.includes(this.currentDetent)) {
@@ -1161,7 +1161,7 @@
       const height = this.currentDetent === 'content'
         ? `${this.menuEl.scrollHeight || this.menuEl.getBoundingClientRect().height || 0}px`
         : `${this._getDetentHeight(this.currentDetent)}px`;
-      this.menuEl.style.setProperty('--pc-sheet-height', height);
+      this.menuEl.style.setProperty('--pm-sheet-height', height);
     }
 
     getDetent() {
@@ -1170,7 +1170,7 @@
 
     setDetent(detent) {
       if (!this._getDetents().includes(detent)) {
-        throw new RangeError(`PopContext: unsupported sheet detent "${detent}".`);
+        throw new RangeError(`PopMenu: unsupported sheet detent "${detent}".`);
       }
       const previous = this.currentDetent;
       this.currentDetent = detent;
@@ -1221,19 +1221,19 @@
       if (this.options.presentation === 'sheet') {
         const viewport = window.visualViewport;
         if (viewport) {
-          this.menuEl.style.setProperty('--pc-vv-height', `${viewport.height}px`);
-          this.menuEl.style.setProperty('--pc-vv-offset-top', `${viewport.offsetTop}px`);
-          this.menuEl.style.bottom = 'calc(100vh - var(--pc-vv-offset-top) - var(--pc-vv-height))';
+          this.menuEl.style.setProperty('--pm-vv-height', `${viewport.height}px`);
+          this.menuEl.style.setProperty('--pm-vv-offset-top', `${viewport.offsetTop}px`);
+          this.menuEl.style.bottom = 'calc(100vh - var(--pm-vv-offset-top) - var(--pm-vv-height))';
         } else {
-          this.menuEl.style.removeProperty('--pc-vv-height');
-          this.menuEl.style.removeProperty('--pc-vv-offset-top');
+          this.menuEl.style.removeProperty('--pm-vv-height');
+          this.menuEl.style.removeProperty('--pm-vv-offset-top');
           this.menuEl.style.bottom = '0px';
         }
         this.menuEl.style.top = 'auto';
         this.menuEl.style.left = '0px';
         this.menuEl.style.right = '0px';
         this.menuEl.style.width = '100%';
-        this.menuEl.style.maxHeight = 'calc(var(--pc-vv-height, 100dvh) - env(safe-area-inset-top, 0px) - 16px)';
+        this.menuEl.style.maxHeight = 'calc(var(--pm-vv-height, 100dvh) - env(safe-area-inset-top, 0px) - 16px)';
         this.menuEl.style.overflowY = '';
         this._applyDetent();
         this.currentFlipState = { flipX: false, flipY: false };
@@ -1243,9 +1243,9 @@
       this.menuEl.style.right = 'auto';
       this.menuEl.style.width = '';
       this.menuEl.style.height = '';
-      this.menuEl.style.removeProperty('--pc-vv-height');
-      this.menuEl.style.removeProperty('--pc-vv-offset-top');
-      this.menuEl.style.removeProperty('--pc-sheet-height');
+      this.menuEl.style.removeProperty('--pm-vv-height');
+      this.menuEl.style.removeProperty('--pm-vv-offset-top');
+      this.menuEl.style.removeProperty('--pm-sheet-height');
       if (this._appliedPopoverMaxHeight && this.menuEl.style.maxHeight === this._appliedPopoverMaxHeight) {
         this.menuEl.style.maxHeight = '';
       }
@@ -1254,7 +1254,7 @@
       }
       this._appliedPopoverMaxHeight = null;
       this._appliedPopoverOverflowY = null;
-      this.menuEl.classList.remove('pc-scrollable');
+      this.menuEl.classList.remove('pm-scrollable');
       if (!this._sheetDrag) this.menuEl.style.transform = '';
       const anchorRect = this._getAnchorRect();
       if (!anchorRect) {
@@ -1278,7 +1278,7 @@
         this._appliedPopoverOverflowY = 'auto';
         this.menuEl.style.maxHeight = this._appliedPopoverMaxHeight;
         this.menuEl.style.overflowY = this._appliedPopoverOverflowY;
-        this.menuEl.classList.add('pc-scrollable');
+        this.menuEl.classList.add('pm-scrollable');
         rect = this.menuEl.getBoundingClientRect();
       }
       let width = rect.width;
@@ -1309,10 +1309,10 @@
         this.menuEl.style.left = `${left}px`;
         this.menuEl.style.top = `${top}px`;
         if (this.options.arrow && this.arrowEl) {
-          this.menuEl.classList.toggle('pc-arrow-top', !this.currentFlipState.flipY);
-          this.menuEl.classList.toggle('pc-arrow-bottom', this.currentFlipState.flipY);
-          this.menuEl.classList.toggle('pc-arrow-left', false);
-          this.menuEl.classList.toggle('pc-arrow-right', false);
+          this.menuEl.classList.toggle('pm-arrow-top', !this.currentFlipState.flipY);
+          this.menuEl.classList.toggle('pm-arrow-bottom', this.currentFlipState.flipY);
+          this.menuEl.classList.toggle('pm-arrow-left', false);
+          this.menuEl.classList.toggle('pm-arrow-right', false);
         }
         return;
       }
@@ -1357,13 +1357,13 @@
       this.menuEl.style.top = `${top}px`;
       this.currentFlipState = { flipX, flipY };
       if (this.options.arrow && this.arrowEl) {
-        this.menuEl.classList.toggle('pc-arrow-top', side === 'bottom');
-        this.menuEl.classList.toggle('pc-arrow-bottom', side === 'top');
-        this.menuEl.classList.toggle('pc-arrow-left', side === 'right');
-        this.menuEl.classList.toggle('pc-arrow-right', side === 'left');
+        this.menuEl.classList.toggle('pm-arrow-top', side === 'bottom');
+        this.menuEl.classList.toggle('pm-arrow-bottom', side === 'top');
+        this.menuEl.classList.toggle('pm-arrow-left', side === 'right');
+        this.menuEl.classList.toggle('pm-arrow-right', side === 'left');
         if (this.options.arrowOffset == null && (side === 'top' || side === 'bottom')) {
           const center = anchorRect.left + anchorRect.width / 2 - left;
-          this.menuEl.style.setProperty('--pc-arrow-offset', `${Math.max(12, Math.min(width - 12, center))}px`);
+          this.menuEl.style.setProperty('--pm-arrow-offset', `${Math.max(12, Math.min(width - 12, center))}px`);
         }
       }
     }
@@ -1431,9 +1431,9 @@
       this._cancelLongPress();
       this._clearTypeAhead();
       if (animateSheet) {
-        const sheetDuration = this._readCssDuration(this.menuEl, '--pc-sheet-out-duration', 220);
+        const sheetDuration = this._readCssDuration(this.menuEl, '--pm-sheet-out-duration', 220);
         const backdropDuration = this.backdropEl
-          ? this._readCssDuration(this.backdropEl, '--pc-backdrop-fade-duration', 250)
+          ? this._readCssDuration(this.backdropEl, '--pm-backdrop-fade-duration', 250)
           : 0;
         const closing = {
           token: ++this._closingToken,
@@ -1475,7 +1475,7 @@
     }
 
     _onSheetAnimationDone(e) {
-      if (e.target !== this.menuEl || e.animationName !== 'pc-sheet-out' || !this._closing) return;
+      if (e.target !== this.menuEl || e.animationName !== 'pm-sheet-out' || !this._closing) return;
       this._markClosingDone('sheet', this._closing.token);
     }
 
@@ -1636,7 +1636,7 @@
 
     _getEnabledItems() {
       if (!this.menuEl) return [];
-      return Array.from(this.menuEl.querySelectorAll('.pc-item:not(.is-disabled)')).filter(el => {
+      return Array.from(this.menuEl.querySelectorAll('.pm-item:not(.is-disabled)')).filter(el => {
         const item = this.options.items[Number(el.dataset.index)];
         return !item || !item.element;
       });
@@ -1657,7 +1657,7 @@
 
     _focusInitial() {
       if (this.options.customContent) {
-        const container = this.menuEl.querySelector('.pc-custom-container');
+        const container = this.menuEl.querySelector('.pm-custom-container');
         const focusable = this._getFocusableElements(container)[0];
         if (focusable) focusable.focus();
         else this.menuEl.focus();
@@ -1704,7 +1704,7 @@
         return;
       }
       if (role !== 'dialog') return;
-      const container = this.options.customContent ? this.menuEl.querySelector('.pc-custom-container') : this.menuEl;
+      const container = this.options.customContent ? this.menuEl.querySelector('.pm-custom-container') : this.menuEl;
       const focusable = this._getFocusableElements(container);
       if (!focusable.length) {
         e.preventDefault();
@@ -1754,7 +1754,7 @@
       const navigable = ['ArrowDown', 'ArrowUp', 'Home', 'End', 'Enter', ' '].includes(e.key) ||
         (this.options.layout === 'grid' && ['ArrowLeft', 'ArrowRight'].includes(e.key));
       if (!navigable) return;
-      const owner = target && target.closest('.pc-item');
+      const owner = target && target.closest('.pm-item');
       if (owner && this.options.items[Number(owner.dataset.index)] && this.options.items[Number(owner.dataset.index)].element) return;
       e.preventDefault();
       const cols = this.options.layout === 'grid' ? (this.options.columns || 3) : 1;
@@ -1864,5 +1864,5 @@
     }
   }
 
-  return PopContext;
+  return PopMenu;
 }));

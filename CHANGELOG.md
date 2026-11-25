@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.0.0
+
+- **Breaking:** Renamed the package from `pop-context` to `pop-menu-js` and the public constructor/global from `PopContext` to `PopMenu`.
+- **Breaking:** Renamed the stylesheet entry point, root class, CSS prefixes, and declarative attributes; no legacy aliases are provided.
+- Added migration guidance to the README.
+
 ## 2.9.0
 
 - Fixed sheets closing on internal scrolling and being dismissed by visual viewport changes.

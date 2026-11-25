@@ -1,12 +1,12 @@
-# PopContext
+# PopMenu JS
 
-[日本語](#popcontext---日本語) | [English](#popcontext---english)
+[日本語](#popmenu-js---日本語) | [English](#popmenu-js---english)
 
 [デモ](https://guri-sharp.github.io/pop-context/demo/) | [Ko-fi で支援](https://ko-fi.com/guri01)
 
 ---
 
-# PopContext - 日本語
+# PopMenu JS - 日本語
 
 軽量・高機能・アクセシビリティ対応のモダンな JavaScript コンテキストメニュー / ポップアップライブラリです。
 
@@ -29,10 +29,18 @@
 
 ## 📦 導入方法
 
-```html
-<link rel="stylesheet" href="pop-context.css">
-<script src="pop-context.js"></script>
+```bash
+npm install pop-menu-js
 ```
+
+```html
+<link rel="stylesheet" href="node_modules/pop-menu-js/src/pop-menu.css">
+<script src="node_modules/pop-menu-js/src/pop-menu.js"></script>
+```
+
+### v3.0 への移行（破壊的変更）
+
+パッケージ名、グローバル名、CSS クラス、CSS 変数、宣言的属性を変更しました。`pop-context` から `pop-menu-js` に移行し、`PopContext` は `PopMenu`、`.pop-context-menu` は `.pop-menu`、`pc-*` / `--pc-*` は `pm-*` / `--pm-*`、`data-pop-context-*` は `data-pop-menu-*` に置き換えてください。旧 API 名の互換エイリアスはありません。
 
 ---
 
@@ -40,12 +48,12 @@
 
 ### 1. 吹き出しの尻尾（Arrow）付き絵文字リアクションピッカー
 ```javascript
-new PopContext('.target', {
+new PopMenu('.target', {
   trigger: 'click',
   layout: 'grid',
   columns: 5,
   arrow: true, // 吹き出しの尻尾を表示
-  className: 'pc-pill',
+  className: 'pm-pill',
   items: [
     { icon: '👍', onClick: () => console.log('👍') },
     { icon: '❤️', onClick: () => console.log('❤️') },
@@ -58,7 +66,7 @@ new PopContext('.target', {
 
 ### 2. カスタム枠（`customContent`）で自作フォームやピッカーを表示
 ```javascript
-new PopContext('#color-btn', {
+new PopMenu('#color-btn', {
   trigger: 'click',
   arrow: true,
   customContent: `
@@ -122,7 +130,7 @@ new PopContext('#color-btn', {
 `trigger` には `'manual'` も指定できます。手動トリガーでは要素イベントを登録せず、`show()` / `hide()` で制御します。`anchor: 'element'` と組み合わせる場合は `setTarget(element)` で表示基準を切り替えられます。
 
 ```javascript
-const menu = new PopContext('#actions', {
+const menu = new PopMenu('#actions', {
   trigger: 'manual',
   anchor: 'element',
   placement: 'bottom-start',
@@ -173,9 +181,9 @@ menu.show();
 ### 宣言的初期化
 
 ```html
-<button data-pop-context
-        data-pop-context-items="#actions-template"
-        data-pop-context-placement="bottom-start">操作</button>
+<button data-pop-menu
+        data-pop-menu-items="#actions-template"
+        data-pop-menu-placement="bottom-start">操作</button>
 
 <template id="actions-template">
   <div data-pop-item><span data-pop-label>編集</span></div>
@@ -186,18 +194,18 @@ menu.show();
 ```
 
 ```javascript
-const declarativeMenu = PopContext.autoInit(document);
-PopContext.autoDestroy(document);
+const declarativeMenu = PopMenu.autoInit(document);
+PopMenu.autoDestroy(document);
 ```
 
-`autoInit(root)` は明示的に呼び出してください。root 内の `[data-pop-context]` 要素を click トリガーとして委譲し、後から追加された要素にも対応します。一致する要素がまだないrootでも初期化でき、同じrootへの再呼び出しでは既存インスタンスを返します。重複した委譲を避けるため、重なり合うrootを別々に初期化しないでください。各ボタンの `data-pop-context-items` は `<template>` のセレクター、`data-pop-context-placement` は配置を指定します。指定したセレクターが `<template>` に一致しない場合、表示時にエラーになります。テンプレート内では `[data-pop-item]` が項目、`[data-pop-label]` がラベルです。`data-pop-role` / `data-pop-checked` / `data-pop-disabled` / `data-pop-hidden` / `data-pop-danger` / `data-pop-icon` / `data-pop-shortcut` も指定できます。`data-pop-divider` と `data-pop-group` は区切りと見出しです。自動初期化は既定では実行されません。`autoDestroy(root)` は指定rootのインスタンスを破棄し、引数なしでは自動初期化した全インスタンスを破棄します。
+`autoInit(root)` は明示的に呼び出してください。root 内の `[data-pop-menu]` 要素を click トリガーとして委譲し、後から追加された要素にも対応します。一致する要素がまだないrootでも初期化でき、同じrootへの再呼び出しでは既存インスタンスを返します。重複した委譲を避けるため、重なり合うrootを別々に初期化しないでください。各ボタンの `data-pop-menu-items` は `<template>` のセレクター、`data-pop-menu-placement` は配置を指定します。指定したセレクターが `<template>` に一致しない場合、表示時にエラーになります。テンプレート内では `[data-pop-item]` が項目、`[data-pop-label]` がラベルです。`data-pop-role` / `data-pop-checked` / `data-pop-disabled` / `data-pop-hidden` / `data-pop-danger` / `data-pop-icon` / `data-pop-shortcut` も指定できます。`data-pop-divider` と `data-pop-group` は区切りと見出しです。自動初期化は既定では実行されません。`autoDestroy(root)` は指定rootのインスタンスを破棄し、引数なしでは自動初期化した全インスタンスを破棄します。
 
-`delegate` を使う場合、ARIA 属性と `openClass` は静的なターゲットにのみ適用され、委譲先の動的要素には追加されません。`PopContext.instancesCount()` は現在のインスタンス数を返し、破棄漏れのテストや診断に利用できます。
+`delegate` を使う場合、ARIA 属性と `openClass` は静的なターゲットにのみ適用され、委譲先の動的要素には追加されません。`PopMenu.instancesCount()` は現在のインスタンス数を返し、破棄漏れのテストや診断に利用できます。
 
 ### ボトムシート
 
 ```javascript
-new PopContext('#share', {
+new PopMenu('#share', {
   trigger: 'click',
   presentation: 'sheet',
   backdrop: true,
@@ -206,21 +214,21 @@ new PopContext('#share', {
 });
 ```
 
-`presentation: 'sheet'` は明示指定で有効になり、既存の popover 表示は変わりません。シートは画面下部に固定され、長い内容はスクロールバーを表示せずにシート内でスクロールします。上部のハンドルはスクロール中も固定されます。カスタム内容では、閉じるボタンなど固定したい要素自身に `pc-sheet-sticky` クラスを指定できます。タイトルなど他の内容は通常どおりスクロールします。表示時は下からスライドしてフェードインし、閉じる時は下へスライドしてフェードアウトします。`prefers-reduced-motion` が有効な環境ではアニメーションを抑えます。既定の背景オーバーレイはクリックで閉じ、上部ハンドルを下へドラッグしても閉じられます。`backdrop` と `swipeToDismiss` は個別に無効化できます。
+`presentation: 'sheet'` は明示指定で有効になり、既存の popover 表示は変わりません。シートは画面下部に固定され、長い内容はスクロールバーを表示せずにシート内でスクロールします。上部のハンドルはスクロール中も固定されます。カスタム内容では、閉じるボタンなど固定したい要素自身に `pm-sheet-sticky` クラスを指定できます。タイトルなど他の内容は通常どおりスクロールします。表示時は下からスライドしてフェードインし、閉じる時は下へスライドしてフェードアウトします。`prefers-reduced-motion` が有効な環境ではアニメーションを抑えます。既定の背景オーバーレイはクリックで閉じ、上部ハンドルを下へドラッグしても閉じられます。`backdrop` と `swipeToDismiss` は個別に無効化できます。
 
 `sheet` は既定でスクロールロックと背景の `inert` 化を行い、items を使う場合もモーダルダイアログとして扱います。上部ハンドルはキーボードでフォーカスでき、Enter / Space で閉じられます。`detents: ['half', 'full']` のように高さ候補を指定すると、ハンドルのドラッグでスナップします。画面サイズの変化やソフトキーボード表示時は `visualViewport` に追従します。`anchor`, `placement`, `autoFlip`, `offset`, `viewportPadding`, `boundary`, `arrow` は sheet では配置に使われません。競合する `anchor`, `placement`, `arrow` の明示指定には警告が出ます。
 
-アニメーションと高さは `--pc-sheet-out-duration`、`--pc-backdrop-fade-duration`、`--pc-sheet-height`、`--pc-vv-height` の CSS 変数で調整できます。
+アニメーションと高さは `--pm-sheet-out-duration`、`--pm-backdrop-fade-duration`、`--pm-sheet-height`、`--pm-vv-height` の CSS 変数で調整できます。
 
 menu 表示中に文字を入力すると、有効項目のラベルを先頭一致で検索します。連続した同じ文字は候補を順送りし、入力バッファは500ms後にリセットされます。`document.dir === 'rtl'` の場合は `-start` / `-end` の配置とグリッドの左右キーを反転します。
 
-`setItems()` は `customContent` を変更しません。カスタム内容と項目表示の切り替えは `setCustomContent()` で行ってください。`theme: 'none'` ではテーマクラスを付けず、`.pop-context-menu` 上の `--pc-*` CSS 変数を利用できます。
+`setItems()` は `customContent` を変更しません。カスタム内容と項目表示の切り替えは `setCustomContent()` で行ってください。`theme: 'none'` ではテーマクラスを付けず、`.pop-menu` 上の `--pm-*` CSS 変数を利用できます。
 
 ---
 
-# PopContext - English
+# PopMenu JS - English
 
-PopContext is a lightweight, dependency-free JavaScript library for context menus and popups. It supports pointer, element, and manually controlled anchors, with keyboard interaction and ARIA state management.
+PopMenu is a lightweight, dependency-free JavaScript library for context menus and popups. It supports pointer, element, and manually controlled anchors, with keyboard interaction and ARIA state management.
 
 Right-click, click, and long-press triggers are supported, along with custom content, optional arrows, automatic placement adjustments, and reusable menu instances.
 
@@ -234,7 +242,7 @@ Right-click, click, and long-press triggers are supported, along with custom con
 - **Reusable controls:** Retarget one instance with `setTarget()`, and update its items or options without recreating it.
 - **Accessibility:** Synchronize trigger ARIA attributes, navigate menu items with the keyboard, and restore trigger attributes on `destroy()`.
 - **Type-ahead and RTL:** Find menu items by typing; placement alignment and grid arrow navigation follow the document direction.
-- **Declarative setup:** Initialize delegated triggers and `<template>` items from data attributes with `PopContext.autoInit()`.
+- **Declarative setup:** Initialize delegated triggers and `<template>` items from data attributes with `PopMenu.autoInit()`.
 - **Bottom sheets:** Opt in to a fixed bottom panel with a backdrop and swipe-to-dismiss handle.
 - **No runtime dependencies:** Use the library directly from its JavaScript and CSS files.
 
@@ -242,15 +250,23 @@ Right-click, click, and long-press triggers are supported, along with custom con
 
 ## 📦 Installation
 
-```html
-<link rel="stylesheet" href="pop-context.css">
-<script src="pop-context.js"></script>
+```bash
+npm install pop-menu-js
 ```
+
+```html
+<link rel="stylesheet" href="node_modules/pop-menu-js/src/pop-menu.css">
+<script src="node_modules/pop-menu-js/src/pop-menu.js"></script>
+```
+
+### Migrating to v3.0 (breaking change)
+
+The package name, global, CSS classes, CSS variables, and declarative attributes have changed. Migrate from `pop-context` to `pop-menu-js`, `PopContext` to `PopMenu`, `.pop-context-menu` to `.pop-menu`, `pc-*` / `--pc-*` to `pm-*` / `--pm-*`, and `data-pop-context-*` to `data-pop-menu-*`. No compatibility aliases for the old API are provided.
 
 ## 🚀 Quick Start
 
 ```javascript
-new PopContext('#target', {
+new PopMenu('#target', {
   trigger: 'click',
   items: [
     { label: 'Edit', onClick: () => console.log('Edit') },
@@ -264,7 +280,7 @@ new PopContext('#target', {
 The default `anchor: 'pointer'` preserves coordinate-based positioning. Use `anchor: 'element'` to position the popup relative to its trigger:
 
 ```javascript
-new PopContext('#actions', {
+new PopMenu('#actions', {
   trigger: 'click',
   anchor: 'element',
   placement: 'bottom-start',
@@ -278,10 +294,10 @@ Supported placements include `top`, `bottom`, `left`, and `right`, with `-start`
 
 ## 🧩 Manual Control
 
-With `trigger: 'manual'`, PopContext does not register trigger event listeners. Open and close the menu from your own code:
+With `trigger: 'manual'`, PopMenu does not register trigger event listeners. Open and close the menu from your own code:
 
 ```javascript
-const menu = new PopContext('#actions', {
+const menu = new PopMenu('#actions', {
   trigger: 'manual',
   anchor: 'element',
   placement: 'bottom-start',
@@ -359,9 +375,9 @@ menu.show();
 ### Declarative Initialization
 
 ```html
-<button data-pop-context
-        data-pop-context-items="#actions-template"
-        data-pop-context-placement="bottom-start">Actions</button>
+<button data-pop-menu
+        data-pop-menu-items="#actions-template"
+        data-pop-menu-placement="bottom-start">Actions</button>
 
 <template id="actions-template">
   <div data-pop-item><span data-pop-label>Edit</span></div>
@@ -372,18 +388,18 @@ menu.show();
 ```
 
 ```javascript
-const declarativeMenu = PopContext.autoInit(document);
-PopContext.autoDestroy(document);
+const declarativeMenu = PopMenu.autoInit(document);
+PopMenu.autoDestroy(document);
 ```
 
-Call `autoInit(root)` explicitly; it delegates click handling for `[data-pop-context]` elements in the root, including matching elements added later. It can be called before any matching elements exist, and repeated calls with the same root return the existing instance. Avoid initializing overlapping roots to prevent duplicate delegated handlers. Each trigger can select a `<template>` with `data-pop-context-items` and choose a placement with `data-pop-context-placement`; a specified selector that does not resolve to a template causes an error when the menu opens. Inside the template, `[data-pop-item]` marks an item and `[data-pop-label]` provides its label. Supported item attributes include `data-pop-role`, `data-pop-checked`, `data-pop-disabled`, `data-pop-hidden`, `data-pop-danger`, `data-pop-icon`, and `data-pop-shortcut`; use `data-pop-divider` and `data-pop-group` for separators and group labels. No automatic initialization runs unless requested. `autoDestroy(root)` destroys the instance for that exact root; without a root, it destroys all declaratively initialized instances.
+Call `autoInit(root)` explicitly; it delegates click handling for `[data-pop-menu]` elements in the root, including matching elements added later. It can be called before any matching elements exist, and repeated calls with the same root return the existing instance. Avoid initializing overlapping roots to prevent duplicate delegated handlers. Each trigger can select a `<template>` with `data-pop-menu-items` and choose a placement with `data-pop-menu-placement`; a specified selector that does not resolve to a template causes an error when the menu opens. Inside the template, `[data-pop-item]` marks an item and `[data-pop-label]` provides its label. Supported item attributes include `data-pop-role`, `data-pop-checked`, `data-pop-disabled`, `data-pop-hidden`, `data-pop-danger`, `data-pop-icon`, and `data-pop-shortcut`; use `data-pop-divider` and `data-pop-group` for separators and group labels. No automatic initialization runs unless requested. `autoDestroy(root)` destroys the instance for that exact root; without a root, it destroys all declaratively initialized instances.
 
-With `delegate`, managed ARIA attributes and `openClass` apply only to static targets; dynamically matched delegated elements do not receive them. `PopContext.instancesCount()` returns the number of active instances for cleanup tests and diagnostics.
+With `delegate`, managed ARIA attributes and `openClass` apply only to static targets; dynamically matched delegated elements do not receive them. `PopMenu.instancesCount()` returns the number of active instances for cleanup tests and diagnostics.
 
 ### Bottom Sheets
 
 ```javascript
-new PopContext('#share', {
+new PopMenu('#share', {
   trigger: 'click',
   presentation: 'sheet',
   backdrop: true,
@@ -392,15 +408,15 @@ new PopContext('#share', {
 });
 ```
 
-The sheet presentation is opt-in and does not change existing popovers. It pins the panel to the bottom of the viewport and scrolls long content within the panel without showing a scrollbar. The top handle remains fixed while scrolling. In custom content, add `pc-sheet-sticky` to an individual control, such as a close button, to keep only that control visible while the title and other content scroll normally. The sheet slides and fades in from the bottom when opening, then slides down and fades out when closing. Animations are reduced when `prefers-reduced-motion` is enabled. By default, the backdrop closes the sheet when clicked, and dragging the top handle downward also dismisses it. Disable either behavior with `backdrop: false` or `swipeToDismiss: false`.
+The sheet presentation is opt-in and does not change existing popovers. It pins the panel to the bottom of the viewport and scrolls long content within the panel without showing a scrollbar. The top handle remains fixed while scrolling. In custom content, add `pm-sheet-sticky` to an individual control, such as a close button, to keep only that control visible while the title and other content scroll normally. The sheet slides and fades in from the bottom when opening, then slides down and fades out when closing. Animations are reduced when `prefers-reduced-motion` is enabled. By default, the backdrop closes the sheet when clicked, and dragging the top handle downward also dismisses it. Disable either behavior with `backdrop: false` or `swipeToDismiss: false`.
 
 Sheets with a backdrop lock page scrolling, make background content inert, and use modal dialog semantics. The keyboard-focusable handle closes the sheet with Enter or Space. Set `detents: ['half', 'full']` to enable drag snapping; numeric detents represent viewport-height percentages. Visual viewport changes, including the on-screen keyboard, reposition the sheet. Positioning options (`anchor`, `placement`, `autoFlip`, `offset`, `viewportPadding`, `boundary`, and `arrow`) do not affect sheets. Explicit conflicting `anchor`, `placement`, or `arrow` values produce a warning.
 
-Customize motion and sizing with the `--pc-sheet-out-duration`, `--pc-backdrop-fade-duration`, `--pc-sheet-height`, and `--pc-vv-height` CSS variables.
+Customize motion and sizing with the `--pm-sheet-out-duration`, `--pm-backdrop-fade-duration`, `--pm-sheet-height`, and `--pm-vv-height` CSS variables.
 
 While a menu is open, typing searches enabled labels by prefix. Repeating a character cycles through matching items, and the search buffer resets after 500 ms. When `document.dir` is `rtl`, `-start` / `-end` placement and horizontal grid-key navigation are reversed.
 
-`setItems()` does not clear or replace `customContent`. Use `setCustomContent()` to switch between custom content and the item list. With `theme: 'none'`, customize the popup using the `--pc-*` CSS variables defined on `.pop-context-menu`.
+`setItems()` does not clear or replace `customContent`. Use `setCustomContent()` to switch between custom content and the item list. With `theme: 'none'`, customize the popup using the `--pm-*` CSS variables defined on `.pop-menu`.
 
 ### Item Schema
 

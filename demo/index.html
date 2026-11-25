@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PopContext.js - 動作確認・検証用デモ</title>
+  <title>PopMenu JS - 動作確認・検証用デモ</title>
   
   <!-- FontAwesome (アイコン用) -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   
-  <!-- PopContext ベーススタイルシート -->
-  <link rel="stylesheet" href="../src/pop-context.css">
+  <!-- PopMenu ベーススタイルシート -->
+  <link rel="stylesheet" href="../src/pop-menu.css">
 
   <style>
     :root {
@@ -199,11 +199,11 @@
     }
 
     .demo-none-theme {
-      --pc-bg: #172554;
-      --pc-border: #1d4ed8;
-      --pc-text: #eff6ff;
-      --pc-hover-bg: #1e40af;
-      --pc-shadow: 0 8px 24px rgba(30, 64, 175, 0.3);
+      --pm-bg: #172554;
+      --pm-border: #1d4ed8;
+      --pm-text: #eff6ff;
+      --pm-hover-bg: #1e40af;
+      --pm-shadow: 0 8px 24px rgba(30, 64, 175, 0.3);
     }
 
     .log-tag {
@@ -212,7 +212,7 @@
       margin-right: 6px;
     }
 
-    .pc-sheet-demo-card {
+    .pm-sheet-demo-card {
       max-width: 440px;
       padding: 22px;
       border: 1px solid #dbe5f1;
@@ -220,15 +220,15 @@
       text-align: left;
     }
 
-    .pc-sheet-demo-card-heading {
+    .pm-sheet-demo-card-heading {
       display: flex;
       align-items: center;
       gap: 14px;
       margin-bottom: 18px;
     }
 
-    .pc-sheet-demo-card-icon,
-    .pc-sheet-demo-title-icon {
+    .pm-sheet-demo-card-icon,
+    .pm-sheet-demo-title-icon {
       display: grid;
       flex: 0 0 auto;
       place-items: center;
@@ -236,34 +236,34 @@
       background: #eaf2ff;
     }
 
-    .pc-sheet-demo-card-icon {
+    .pm-sheet-demo-card-icon {
       width: 48px;
       height: 48px;
       border-radius: 15px;
       font-size: 19px;
     }
 
-    .pc-sheet-demo-card h3 {
+    .pm-sheet-demo-card h3 {
       justify-content: flex-start;
       margin: 0 0 4px;
       font-size: 17px;
     }
 
-    .pc-sheet-demo-card p {
+    .pm-sheet-demo-card p {
       line-height: 1.6;
     }
 
-    .pc-sheet-demo-card .btn {
+    .pm-sheet-demo-card .btn {
       width: 100%;
       justify-content: center;
     }
 
-    .pc-sheet-demo-content {
+    .pm-sheet-demo-content {
       padding: 8px 18px 22px;
       padding-right: max(16px, env(safe-area-inset-right, 0px));
     }
 
-    .pc-sheet-demo-header {
+    .pm-sheet-demo-header {
       display: flex;
       align-items: center;
       gap: 12px;
@@ -271,19 +271,19 @@
       padding-right: 56px;
     }
 
-    .pc-sheet-demo-title-icon {
+    .pm-sheet-demo-title-icon {
       width: 42px;
       height: 42px;
       border-radius: 14px;
       font-size: 17px;
     }
 
-    .pc-sheet-demo-title {
+    .pm-sheet-demo-title {
       flex: 1;
       min-width: 0;
     }
 
-    .pc-sheet-demo-eyebrow {
+    .pm-sheet-demo-eyebrow {
       display: block;
       margin-bottom: 2px;
       color: #64748b;
@@ -292,14 +292,14 @@
       letter-spacing: 0.12em;
     }
 
-    .pc-sheet-demo-content h3 {
+    .pm-sheet-demo-content h3 {
       margin: 0;
       color: #0f172a;
       font-size: 19px;
       line-height: 1.3;
     }
 
-    .pc-sheet-demo-close {
+    .pm-sheet-demo-close {
       display: grid;
       width: 44px;
       height: 44px;
@@ -316,7 +316,7 @@
       cursor: pointer;
     }
 
-    .pc-sheet-demo-close::before {
+    .pm-sheet-demo-close::before {
       position: absolute;
       top: 4px;
       right: 0;
@@ -328,27 +328,27 @@
       pointer-events: none;
     }
 
-    .pc-sheet-demo-close i {
+    .pm-sheet-demo-close i {
       position: relative;
       left: 4px;
       z-index: 1;
     }
 
-    .pc-sheet-demo-close:hover {
+    .pm-sheet-demo-close:hover {
       color: #0f172a;
     }
 
-    .pc-sheet-demo-close:hover::before {
+    .pm-sheet-demo-close:hover::before {
       background: #e2e8f0;
     }
 
-    .pc-sheet-demo-description {
+    .pm-sheet-demo-description {
       margin: 0 0 16px;
       color: #64748b;
       font-size: 13px;
     }
 
-    .pc-sheet-demo-link {
+    .pm-sheet-demo-link {
       display: flex;
       align-items: center;
       gap: 12px;
@@ -359,7 +359,7 @@
       border-radius: 14px;
     }
 
-    .pc-sheet-demo-link-icon {
+    .pm-sheet-demo-link-icon {
       display: grid;
       width: 38px;
       height: 38px;
@@ -370,36 +370,36 @@
       border-radius: 11px;
     }
 
-    .pc-sheet-demo-link-copy {
+    .pm-sheet-demo-link-copy {
       min-width: 0;
     }
 
-    .pc-sheet-demo-link-copy span,
-    .pc-sheet-demo-link-copy strong {
+    .pm-sheet-demo-link-copy span,
+    .pm-sheet-demo-link-copy strong {
       display: block;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
     }
 
-    .pc-sheet-demo-link-copy span {
+    .pm-sheet-demo-link-copy span {
       margin-bottom: 2px;
       color: #64748b;
       font-size: 11px;
     }
 
-    .pc-sheet-demo-link-copy strong {
+    .pm-sheet-demo-link-copy strong {
       color: #1e293b;
       font-size: 13px;
       font-weight: 600;
     }
 
-    .pc-sheet-demo-actions {
+    .pm-sheet-demo-actions {
       display: grid;
       gap: 8px;
     }
 
-    .pc-sheet-demo-actions button {
+    .pm-sheet-demo-actions button {
       display: flex;
       min-height: 62px;
       align-items: center;
@@ -414,13 +414,13 @@
       transition: background 0.16s ease, border-color 0.16s ease, transform 0.16s ease;
     }
 
-    .pc-sheet-demo-actions button:hover {
+    .pm-sheet-demo-actions button:hover {
       background: #f8fafc;
       border-color: #bfdbfe;
       transform: translateY(-1px);
     }
 
-    .pc-sheet-demo-action-icon {
+    .pm-sheet-demo-action-icon {
       display: grid;
       width: 40px;
       height: 40px;
@@ -432,42 +432,42 @@
       font-size: 15px;
     }
 
-    .pc-sheet-demo-action-icon.is-green {
+    .pm-sheet-demo-action-icon.is-green {
       color: #059669;
       background: #ecfdf5;
     }
 
-    .pc-sheet-demo-action-icon.is-violet {
+    .pm-sheet-demo-action-icon.is-violet {
       color: #7c3aed;
       background: #f5f3ff;
     }
 
-    .pc-sheet-demo-action-copy {
+    .pm-sheet-demo-action-copy {
       flex: 1;
       min-width: 0;
     }
 
-    .pc-sheet-demo-action-copy strong,
-    .pc-sheet-demo-action-copy span {
+    .pm-sheet-demo-action-copy strong,
+    .pm-sheet-demo-action-copy span {
       display: block;
     }
 
-    .pc-sheet-demo-action-copy strong {
+    .pm-sheet-demo-action-copy strong {
       margin-bottom: 2px;
       font-size: 13px;
     }
 
-    .pc-sheet-demo-action-copy span {
+    .pm-sheet-demo-action-copy span {
       color: #64748b;
       font-size: 11px;
     }
 
-    .pc-sheet-demo-action-arrow {
+    .pm-sheet-demo-action-arrow {
       color: #94a3b8;
       font-size: 12px;
     }
 
-    .pc-sheet-demo-note {
+    .pm-sheet-demo-note {
       display: flex;
       align-items: center;
       justify-content: center;
@@ -482,7 +482,7 @@
 
   <div class="container">
     <header>
-      <h1>🚀 PopContext.js <span class="badge">動作検証デモ</span></h1>
+      <h1>🚀 PopMenu JS <span class="badge">動作検証デモ</span></h1>
       <p class="subtitle">各種設定・レイアウト・トリガーでの表示と動作をインタラクティブにテストできます。</p>
     </header>
 
@@ -593,13 +593,13 @@
         <h3>データ属性から自動初期化</h3>
         <p style="margin-bottom: 12px;">テンプレートを読み込み、ボタンへ委譲します。</p>
         <button class="btn"
-                data-pop-context
-                data-pop-context-items="#declarative-template"
-                data-pop-context-placement="bottom-start">宣言的メニュー A</button>
+                data-pop-menu
+                data-pop-menu-items="#declarative-template"
+                data-pop-menu-placement="bottom-start">宣言的メニュー A</button>
         <button class="btn"
-                data-pop-context
-                data-pop-context-items="#declarative-alt-template"
-                data-pop-context-placement="right-start">宣言的メニュー B</button>
+                data-pop-menu
+                data-pop-menu-items="#declarative-alt-template"
+                data-pop-menu-placement="right-start">宣言的メニュー B</button>
         <button class="btn" id="reinit-declarative">autoDestroy / autoInit</button>
       </div>
       <div class="card">
@@ -624,11 +624,11 @@
       <div data-pop-item><span data-pop-label>削除</span></div>
     </template>
 
-    <h2>v2.9.0 の追加機能</h2>
+    <h2>v3.0.0 の追加機能</h2>
     <div class="demo-grid">
-      <div class="card pc-sheet-demo-card">
-        <div class="pc-sheet-demo-card-heading">
-          <span class="pc-sheet-demo-card-icon" aria-hidden="true"><i class="fa-solid fa-arrow-up-from-bracket"></i></span>
+      <div class="card pm-sheet-demo-card">
+        <div class="pm-sheet-demo-card-heading">
+          <span class="pm-sheet-demo-card-icon" aria-hidden="true"><i class="fa-solid fa-arrow-up-from-bracket"></i></span>
           <div>
             <h3>ボトムシート</h3>
             <p>モーダル操作、デテント、キーボード操作に対応した共有シートです。</p>
@@ -646,13 +646,13 @@
         <button class="log-clear-btn" onclick="clearLog()">クリア</button>
       </div>
       <div class="log-console" id="log-console">
-        <div class="log-line"><span class="log-time">[00:00:00]</span><span class="log-tag">[SYSTEM]</span>PopContext.js 準備完了。エリア上で操作テストを行ってください。</div>
+        <div class="log-line"><span class="log-time">[00:00:00]</span><span class="log-tag">[SYSTEM]</span>PopMenu JS 準備完了。エリア上で操作テストを行ってください。</div>
       </div>
     </div>
   </div>
 
-  <!-- PopContext ライブラリ本体 (ローカルファイル読み込み) -->
-  <script src="../src/pop-context.js"></script>
+  <!-- PopMenu ライブラリ本体 (ローカルファイル読み込み) -->
+  <script src="../src/pop-menu.js"></script>
 
   <script>
     // ログ記録用ユーティリティ
@@ -671,10 +671,10 @@
       log('SYSTEM', 'ログをクリアしました。');
     }
 
-    // PopContext インスタンスの生成とイベントバインド
+    // PopMenu インスタンスの生成とイベントバインド
 
     // 1. 標準リスト (右クリック)
-    new PopContext('#demo-list', {
+    new PopMenu('#demo-list', {
       trigger: 'contextmenu',
       items: [
         { label: '元に戻す', icon: 'fa-solid fa-rotate-left', shortcut: 'Ctrl+Z', onClick: () => log('LIST', '「元に戻す」を実行') },
@@ -689,12 +689,12 @@
     });
 
     // 2. 絵文字リアクションピッカー (横5列・ピル型・矢印あり)
-    new PopContext('#demo-reactions', {
+    new PopMenu('#demo-reactions', {
       trigger: 'contextmenu',
       layout: 'grid',
       columns: 5,
       arrow: true,
-      className: 'pc-pill-reaction',
+      className: 'pm-pill-reaction',
       items: [
         { icon: '👍', onClick: () => log('REACTION', '👍（いいね）を送信しました') },
         { icon: '❤️', onClick: () => log('REACTION', '❤️（ハート）を送信しました') },
@@ -705,7 +705,7 @@
     });
 
     // 3. ダークテーマ
-    new PopContext('#demo-dark', {
+    new PopMenu('#demo-dark', {
       theme: 'dark',
       items: [
         { label: 'プロフィール管理', icon: 'fa-solid fa-user-gear', onClick: () => log('DARK', 'プロフィール管理を選択') },
@@ -716,7 +716,7 @@
     });
 
     // 4. 左クリック起動
-    new PopContext('#demo-btn', {
+    new PopMenu('#demo-btn', {
       trigger: 'click',
       offset: { x: 0, y: 8 },
       items: [
@@ -727,7 +727,7 @@
     });
 
     // 5. モバイル長押し
-    new PopContext('#demo-longpress', {
+    new PopMenu('#demo-longpress', {
       trigger: 'longpress',
       longPressDuration: 500,
       items: [
@@ -739,7 +739,7 @@
     });
 
     // 6. グリッド (4列)
-    new PopContext('#demo-grid', {
+    new PopMenu('#demo-grid', {
       layout: 'grid',
       columns: 4,
       items: [
@@ -755,7 +755,7 @@
     });
 
     // 7. カスタム枠 ＆ 吹き出し
-    new PopContext('#demo-custom-arrow', {
+    new PopMenu('#demo-custom-arrow', {
       trigger: 'click',
       arrow: true,
       customContent: `
@@ -772,7 +772,7 @@
       `
     });
 
-    const placementMenu = new PopContext('#demo-toggle', {
+    const placementMenu = new PopMenu('#demo-toggle', {
       trigger: 'click',
       anchor: 'element',
       placement: 'bottom-start',
@@ -784,7 +784,7 @@
       ]
     });
 
-    const manualMenu = new PopContext('#manual-a', {
+    const manualMenu = new PopMenu('#manual-a', {
       trigger: 'manual',
       anchor: 'element',
       placement: 'bottom-start',
@@ -801,7 +801,7 @@
       manualMenu.show();
     });
 
-    new PopContext('#demo-link', {
+    new PopMenu('#demo-link', {
       trigger: 'click',
       preventDefaultTrigger: false,
       anchor: 'element',
@@ -809,7 +809,7 @@
       items: [{ label: 'リンクの既定動作は抑止されません' }]
     });
 
-    new PopContext('#delegate-root', {
+    new PopMenu('#delegate-root', {
       trigger: 'click',
       delegate: '.delegated-item',
       anchor: 'element',
@@ -824,7 +824,7 @@
       document.getElementById('delegate-root').appendChild(button);
     });
 
-    new PopContext('#demo-advanced-items', {
+    new PopMenu('#demo-advanced-items', {
       trigger: 'click',
       items: [
         { group: '表示' },
@@ -836,7 +836,7 @@
       ]
     });
 
-    new PopContext('#demo-custom-dialog', {
+    new PopMenu('#demo-custom-dialog', {
       trigger: 'click',
       customContent: `
         <form style="padding: 12px; display: grid; gap: 8px; min-width: 220px;">
@@ -847,7 +847,7 @@
       `
     });
 
-    new PopContext('#demo-precise-longpress', {
+    new PopMenu('#demo-precise-longpress', {
       trigger: 'longpress',
       longPressDuration: 500,
       longPressMoveTolerance: 10,
@@ -862,18 +862,18 @@
       event.preventDefault();
       log('FORM', '送信イベントが発生しました');
     });
-    new PopContext('#demo-form-item', {
+    new PopMenu('#demo-form-item', {
       trigger: 'click',
       items: [{ element: formItem }]
     });
 
-    new PopContext('#demo-empty-items', {
+    new PopMenu('#demo-empty-items', {
       trigger: 'click',
       emptyText: '表示できる項目はありません。',
       items: [{ label: '非表示', hidden: true }]
     });
 
-    new PopContext('#demo-typeahead', {
+    new PopMenu('#demo-typeahead', {
       trigger: 'click',
       anchor: 'element',
       placement: 'bottom-start',
@@ -891,15 +891,15 @@
     });
 
     document.getElementById('reinit-declarative').addEventListener('click', () => {
-      const destroyed = PopContext.autoDestroy();
-      const initialized = PopContext.autoInit(document);
+      const destroyed = PopMenu.autoDestroy();
+      const initialized = PopMenu.autoInit(document);
       log('DATA', `${destroyed} 個の宣言的インスタンスを破棄し、再初期化しました`);
       return initialized;
     });
 
-    PopContext.autoInit(document);
+    PopMenu.autoInit(document);
 
-    new PopContext('#demo-bottom-sheet', {
+    new PopMenu('#demo-bottom-sheet', {
       trigger: 'click',
       presentation: 'sheet',
       backdrop: true,
@@ -909,28 +909,28 @@
       ariaLabel: '共有メニュー',
       customContent(container) {
         const content = document.createElement('section');
-        content.className = 'pc-sheet-demo-content';
+        content.className = 'pm-sheet-demo-content';
         content.innerHTML = `
-          <button class="pc-sheet-demo-close pc-sheet-sticky" type="button" aria-label="閉じる"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
-          <div class="pc-sheet-demo-header">
-            <span class="pc-sheet-demo-title-icon" aria-hidden="true"><i class="fa-solid fa-arrow-up-from-bracket"></i></span>
-            <div class="pc-sheet-demo-title">
-              <span class="pc-sheet-demo-eyebrow">SHARE</span>
+          <button class="pm-sheet-demo-close pm-sheet-sticky" type="button" aria-label="閉じる"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+          <div class="pm-sheet-demo-header">
+            <span class="pm-sheet-demo-title-icon" aria-hidden="true"><i class="fa-solid fa-arrow-up-from-bracket"></i></span>
+            <div class="pm-sheet-demo-title">
+              <span class="pm-sheet-demo-eyebrow">SHARE</span>
               <h3>このページを共有</h3>
             </div>
           </div>
-          <p class="pc-sheet-demo-description">共有方法を選択してください。</p>
-          <div class="pc-sheet-demo-link">
-            <span class="pc-sheet-demo-link-icon" aria-hidden="true"><i class="fa-solid fa-link"></i></span>
-            <div class="pc-sheet-demo-link-copy">
+          <p class="pm-sheet-demo-description">共有方法を選択してください。</p>
+          <div class="pm-sheet-demo-link">
+            <span class="pm-sheet-demo-link-icon" aria-hidden="true"><i class="fa-solid fa-link"></i></span>
+            <div class="pm-sheet-demo-link-copy">
               <span>共有リンク</span>
-              <strong>pop-context.dev/demo</strong>
+              <strong>pop-menu-js.dev/demo</strong>
             </div>
           </div>
-          <div class="pc-sheet-demo-actions"></div>
-          <p class="pc-sheet-demo-note"><i class="fa-solid fa-circle-info" aria-hidden="true"></i>操作内容はイベントログで確認できます</p>
+          <div class="pm-sheet-demo-actions"></div>
+          <p class="pm-sheet-demo-note"><i class="fa-solid fa-circle-info" aria-hidden="true"></i>操作内容はイベントログで確認できます</p>
         `;
-        content.querySelector('.pc-sheet-demo-close').addEventListener('click', () => {
+        content.querySelector('.pm-sheet-demo-close').addEventListener('click', () => {
           this.hide({ restoreFocus: true });
         });
         [
@@ -941,15 +941,15 @@
           const button = document.createElement('button');
           button.type = 'button';
           button.innerHTML = `
-            <span class="pc-sheet-demo-action-icon ${action.tone}" aria-hidden="true"><i class="fa-solid ${action.icon}"></i></span>
-            <span class="pc-sheet-demo-action-copy"><strong>${action.label}</strong><span>${action.description}</span></span>
-            <i class="fa-solid fa-chevron-right pc-sheet-demo-action-arrow" aria-hidden="true"></i>
+            <span class="pm-sheet-demo-action-icon ${action.tone}" aria-hidden="true"><i class="fa-solid ${action.icon}"></i></span>
+            <span class="pm-sheet-demo-action-copy"><strong>${action.label}</strong><span>${action.description}</span></span>
+            <i class="fa-solid fa-chevron-right pm-sheet-demo-action-arrow" aria-hidden="true"></i>
           `;
           button.addEventListener('click', () => {
             log('SHEET', `${action.label}を選択しました`);
             this.hide({ restoreFocus: true });
           });
-          content.querySelector('.pc-sheet-demo-actions').appendChild(button);
+          content.querySelector('.pm-sheet-demo-actions').appendChild(button);
         });
         container.appendChild(content);
       }

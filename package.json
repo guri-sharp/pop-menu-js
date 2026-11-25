@@ -1,9 +1,9 @@
 {
-  "name": "pop-context",
-  "version": "2.9.0",
-  "description": "Lightweight, accessible, multi-trigger custom context menu library.",
-  "main": "src/pop-context.js",
-  "style": "src/pop-context.css",
+  "name": "pop-menu-js",
+  "version": "3.0.0",
+  "description": "Lightweight, accessible, multi-trigger popup and context menu library.",
+  "main": "src/pop-menu.js",
+  "style": "src/pop-menu.css",
   "files": [
     "src/",
     "README.md",
@@ -20,7 +20,7 @@
     "context-menu",
     "contextmenu",
     "menu",
-    "pop-context",
+    "pop-menu-js",
     "ui",
     "accessibility",
     "a11y",
