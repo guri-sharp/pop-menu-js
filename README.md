@@ -2,7 +2,7 @@
 
 [日本語](#popmenu-js---日本語) | [English](#popmenu-js---english)
 
-[デモ](https://guri-sharp.github.io/pop-context/demo/) | [Ko-fi で支援](https://ko-fi.com/guri01)
+[デモ](https://guri-sharp.github.io/pop-menu-js/demo/) | [Ko-fi で支援](https://ko-fi.com/guri01)
 
 ---
 
