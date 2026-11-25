@@ -1,5 +1,5 @@
 /* ==========================================================================
-   PopContext - Base Stylesheet v2.6.0
+   PopContext - Base Stylesheet v2.7.0
    ========================================================================== */
 
 .pop-context-menu {
@@ -243,7 +243,7 @@
 }
 
 .pop-context-menu .pc-item.is-checked::before {
-  content: "✓";
+  content: "\2713";
   display: inline-block;
   width: var(--pc-icon-size);
   flex: 0 0 var(--pc-icon-size);

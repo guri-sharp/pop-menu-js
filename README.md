@@ -21,6 +21,8 @@
 - 🚀 **マルチトリガー対応**: 右クリック（`contextmenu`）、左クリック（`click`）、モバイル端末の長押し（`longpress`）に対応。
 - 📐 **スマートな表示補正 (Auto-Flip)**: 画面端からはみ出さないよう、メニューや矢印の位置を自動反転・マージン補正。
 - ♿ **アクセシビリティ対応**: WAI-ARIA 属性やキーボード操作（`↑`/`↓`/`←`/`→`/`Escape`）に対応。
+- 🔎 **type-ahead と RTL**: 文字入力でメニュー項目を検索し、`dir="rtl"` に合わせて配置とグリッド操作を反転。
+- 🏷️ **宣言的利用**: データ属性と `<template>` からメニューを作り、`autoInit()` で委譲初期化。
 
 ---
 
@@ -154,7 +156,31 @@ menu.show();
 | `reposition()` | 現在のアンカーに合わせて再配置 |
 | `destroy()` | リスナー、DOM、ライブラリが付与した属性を解放・復元 |
 
-`setItems()` は `customContent` を変更しません。カスタム内容と項目表示の切り替えは `setCustomContent()` で行ってください。`theme: 'none'` ではテーマクラスを付けず、`.pop-context-menu` 上の `--pc-*` CSS 変数を利用できます。`html` の項目スキーマはこのリリースでは未対応です。
+### 宣言的初期化
+
+```html
+<button data-pop-context
+        data-pop-context-items="#actions-template"
+        data-pop-context-placement="bottom-start">操作</button>
+
+<template id="actions-template">
+  <div data-pop-item><span data-pop-label>編集</span></div>
+  <div data-pop-item data-pop-disabled="true">
+    <span data-pop-label>利用不可</span>
+  </div>
+</template>
+```
+
+```javascript
+const declarativeMenu = PopContext.autoInit(document);
+PopContext.autoDestroy(document);
+```
+
+`autoInit(root)` は明示的に呼び出してください。root 内の `[data-pop-context]` 要素を click トリガーとして委譲し、後から追加された要素にも対応します。一致する要素がまだないrootでも初期化でき、同じrootへの再呼び出しでは既存インスタンスを返します。重複した委譲を避けるため、重なり合うrootを別々に初期化しないでください。各ボタンの `data-pop-context-items` は `<template>` のセレクター、`data-pop-context-placement` は配置を指定します。指定したセレクターが `<template>` に一致しない場合、表示時にエラーになります。テンプレート内では `[data-pop-item]` が項目、`[data-pop-label]` がラベルです。`data-pop-role` / `data-pop-checked` / `data-pop-disabled` / `data-pop-hidden` / `data-pop-danger` / `data-pop-icon` / `data-pop-shortcut` も指定できます。`data-pop-divider` と `data-pop-group` は区切りと見出しです。自動初期化は既定では実行されません。`autoDestroy(root)` は指定rootのインスタンスを破棄し、引数なしでは自動初期化した全インスタンスを破棄します。
+
+menu 表示中に文字を入力すると、有効項目のラベルを先頭一致で検索します。連続した同じ文字は候補を順送りし、入力バッファは500ms後にリセットされます。`document.dir === 'rtl'` の場合は `-start` / `-end` の配置とグリッドの左右キーを反転します。
+
+`setItems()` は `customContent` を変更しません。カスタム内容と項目表示の切り替えは `setCustomContent()` で行ってください。`theme: 'none'` ではテーマクラスを付けず、`.pop-context-menu` 上の `--pc-*` CSS 変数を利用できます。
 
 ---
 
@@ -173,6 +199,8 @@ Right-click, click, and long-press triggers are supported, along with custom con
 - **Custom content and layouts:** Render a list, grid, or custom content such as a form or picker.
 - **Reusable controls:** Retarget one instance with `setTarget()`, and update its items or options without recreating it.
 - **Accessibility:** Synchronize trigger ARIA attributes, navigate menu items with the keyboard, and restore trigger attributes on `destroy()`.
+- **Type-ahead and RTL:** Find menu items by typing; placement alignment and grid arrow navigation follow the document direction.
+- **Declarative setup:** Initialize delegated triggers and `<template>` items from data attributes with `PopContext.autoInit()`.
 - **No runtime dependencies:** Use the library directly from its JavaScript and CSS files.
 
 ---
@@ -281,6 +309,30 @@ menu.show();
 | `setOptions(patch)` | Shallow-merge option updates. Use the dedicated methods to update `items` or `customContent`. |
 | `reposition()` | Recalculate the current position. |
 | `destroy()` | Remove the popup and listeners, and restore attributes managed by the instance. Safe to call more than once. |
+
+### Declarative Initialization
+
+```html
+<button data-pop-context
+        data-pop-context-items="#actions-template"
+        data-pop-context-placement="bottom-start">Actions</button>
+
+<template id="actions-template">
+  <div data-pop-item><span data-pop-label>Edit</span></div>
+  <div data-pop-item data-pop-disabled="true">
+    <span data-pop-label>Unavailable</span>
+  </div>
+</template>
+```
+
+```javascript
+const declarativeMenu = PopContext.autoInit(document);
+PopContext.autoDestroy(document);
+```
+
+Call `autoInit(root)` explicitly; it delegates click handling for `[data-pop-context]` elements in the root, including matching elements added later. It can be called before any matching elements exist, and repeated calls with the same root return the existing instance. Avoid initializing overlapping roots to prevent duplicate delegated handlers. Each trigger can select a `<template>` with `data-pop-context-items` and choose a placement with `data-pop-context-placement`; a specified selector that does not resolve to a template causes an error when the menu opens. Inside the template, `[data-pop-item]` marks an item and `[data-pop-label]` provides its label. Supported item attributes include `data-pop-role`, `data-pop-checked`, `data-pop-disabled`, `data-pop-hidden`, `data-pop-danger`, `data-pop-icon`, and `data-pop-shortcut`; use `data-pop-divider` and `data-pop-group` for separators and group labels. No automatic initialization runs unless requested. `autoDestroy(root)` destroys the instance for that exact root; without a root, it destroys all declaratively initialized instances.
+
+While a menu is open, typing searches enabled labels by prefix. Repeating a character cycles through matching items, and the search buffer resets after 500 ms. When `document.dir` is `rtl`, `-start` / `-end` placement and horizontal grid-key navigation are reversed.
 
 `setItems()` does not clear or replace `customContent`. Use `setCustomContent()` to switch between custom content and the item list. With `theme: 'none'`, customize the popup using the `--pc-*` CSS variables defined on `.pop-context-menu`.
 

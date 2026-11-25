@@ -322,6 +322,43 @@
       </div>
     </div>
 
+    <h2>v2.7.0 の追加機能</h2>
+    <div class="demo-grid">
+      <div class="card">
+        <h3>データ属性から自動初期化</h3>
+        <p style="margin-bottom: 12px;">テンプレートを読み込み、ボタンへ委譲します。</p>
+        <button class="btn"
+                data-pop-context
+                data-pop-context-items="#declarative-template"
+                data-pop-context-placement="bottom-start">宣言的メニュー A</button>
+        <button class="btn"
+                data-pop-context
+                data-pop-context-items="#declarative-alt-template"
+                data-pop-context-placement="right-start">宣言的メニュー B</button>
+        <button class="btn" id="reinit-declarative">autoDestroy / autoInit</button>
+      </div>
+      <div class="card">
+        <h3>type-ahead と RTL</h3>
+        <p style="margin-bottom: 12px;">メニュー表示中に文字を入力すると項目へ移動します。</p>
+        <button class="btn" id="demo-typeahead">検索メニュー</button>
+        <button class="btn" id="toggle-rtl">ページ方向を切替</button>
+      </div>
+    </div>
+
+    <template id="declarative-template">
+      <div data-pop-item data-pop-id="pin" data-pop-role="menuitemcheckbox" data-pop-checked="true">
+        <span data-pop-label>ピン留め</span>
+      </div>
+      <div data-pop-item data-pop-divider></div>
+      <div data-pop-item data-pop-disabled="true">
+        <span data-pop-label>利用できません</span>
+      </div>
+    </template>
+    <template id="declarative-alt-template">
+      <div data-pop-item><span data-pop-label>アーカイブ</span></div>
+      <div data-pop-item><span data-pop-label>削除</span></div>
+    </template>
+
     <!-- コンソールログ -->
     <div class="log-section">
       <div class="log-header">
@@ -555,6 +592,32 @@
       emptyText: '表示できる項目はありません。',
       items: [{ label: '非表示', hidden: true }]
     });
+
+    new PopContext('#demo-typeahead', {
+      trigger: 'click',
+      anchor: 'element',
+      placement: 'bottom-start',
+      items: [
+        { label: 'Open document' },
+        { label: 'Copy link' },
+        { label: 'Paste text' },
+        { label: 'Search page' }
+      ]
+    });
+
+    document.getElementById('toggle-rtl').addEventListener('click', () => {
+      document.documentElement.dir = document.dir === 'rtl' ? 'ltr' : 'rtl';
+      log('RTL', `ページ方向を ${document.dir.toUpperCase()} に変更`);
+    });
+
+    document.getElementById('reinit-declarative').addEventListener('click', () => {
+      const destroyed = PopContext.autoDestroy();
+      const initialized = PopContext.autoInit(document);
+      log('DATA', `${destroyed} 個の宣言的インスタンスを破棄し、再初期化しました`);
+      return initialized;
+    });
+
+    PopContext.autoInit(document);
   </script>
 </body>
 </html>

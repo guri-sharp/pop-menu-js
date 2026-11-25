@@ -1,6 +1,6 @@
 {
   "name": "pop-context",
-  "version": "2.6.0",
+  "version": "2.7.0",
   "description": "Lightweight, accessible, multi-trigger custom context menu library.",
   "main": "src/pop-context.js",
   "style": "src/pop-context.css",

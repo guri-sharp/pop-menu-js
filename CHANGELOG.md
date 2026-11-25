@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.7.0
+
+- Added explicit declarative initialization and cleanup through `PopContext.autoInit()` and `autoDestroy()`.
+- Added `<template>`-based menu item definitions through data attributes.
+- Added menu type-ahead search and RTL-aware placement and grid keyboard navigation.
+
 ## 2.6.0
 
 - Added movement-aware long-press handling, optional haptic feedback, and suppression of the follow-up click/context menu.

@@ -1,5 +1,5 @@
 /**
- * PopContext v2.6.0
+ * PopContext v2.7.0
  * Lightweight, accessible, multi-trigger custom context menu with element positioning.
  */
 (function (global, factory) {
@@ -14,6 +14,7 @@
   'use strict';
 
   const instances = new Set();
+  const declarativeInstances = new Map();
   let globalEventsBound = false;
   let menuId = 0;
 
@@ -109,6 +110,8 @@
 
     if (['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight', 'Home', 'End', 'Enter', ' '].includes(e.key)) {
       activeInst._handleKeyboardNavigation(e);
+    } else {
+      activeInst._handleTypeAhead(e);
     }
   }
 
@@ -181,6 +184,8 @@
       this._rafIsTimeout = false;
       this._showing = false;
       this._destroyed = false;
+      this._typeAheadBuffer = '';
+      this._typeAheadTimer = null;
 
       this._initTargets(target);
       this.triggerOrigin = this.targetEls[0] || null;
@@ -192,6 +197,74 @@
 
       instances.add(this);
       bindGlobalEvents();
+    }
+
+    static autoInit(root = typeof document !== 'undefined' ? document : null) {
+      if (!root || (root.nodeType !== 1 && root.nodeType !== 9) || typeof root.querySelectorAll !== 'function') {
+        throw new TypeError('PopContext.autoInit: root must be a Document or Element.');
+      }
+      if (declarativeInstances.has(root)) return declarativeInstances.get(root);
+
+      const instance = new PopContext(root, {
+        trigger: 'click',
+        delegate: '[data-pop-context]',
+        anchor: 'element',
+        placement: 'bottom-start',
+        onBeforeShow() {
+          const trigger = this.triggerOrigin;
+          if (!trigger) throw new Error('PopContext.autoInit: show() requires an active data-pop-context trigger.');
+          const selector = trigger.getAttribute('data-pop-context-items');
+          const template = selector ? trigger.ownerDocument.querySelector(selector) : null;
+          if (selector && (!template || template.tagName !== 'TEMPLATE' || !template.content)) {
+            throw new Error(`PopContext.autoInit: item template "${selector}" was not found.`);
+          }
+          this.options.placement = trigger.getAttribute('data-pop-context-placement') || 'bottom-start';
+          const itemElements = template ? template.content.querySelectorAll('[data-pop-item]') : [];
+          this.setItems(Array.from(itemElements, element => {
+            if (element.hasAttribute('data-pop-divider')) return { divider: true };
+            if (element.hasAttribute('data-pop-group')) {
+              return { group: element.getAttribute('data-pop-group') || element.textContent.trim() };
+            }
+            const labelElement = element.matches('[data-pop-label]')
+              ? element
+              : element.querySelector('[data-pop-label]');
+            const item = {
+              label: (labelElement || element).textContent.trim()
+            };
+            const stringAttributes = {
+              id: 'data-pop-id',
+              icon: 'data-pop-icon',
+              role: 'data-pop-role',
+              shortcut: 'data-pop-shortcut'
+            };
+            Object.keys(stringAttributes).forEach(key => {
+              const value = element.getAttribute(stringAttributes[key]);
+              if (value != null) item[key] = value;
+            });
+            ['checked', 'disabled', 'hidden', 'danger'].forEach(key => {
+              const attribute = `data-pop-${key}`;
+              if (element.hasAttribute(attribute)) {
+                item[key] = !['false', '0', 'no', 'off'].includes(element.getAttribute(attribute).toLowerCase());
+              }
+            });
+            return item;
+          }));
+        }
+      });
+      declarativeInstances.set(root, instance);
+      return instance;
+    }
+
+    static autoDestroy(root) {
+      if (root) {
+        const instance = declarativeInstances.get(root);
+        if (!instance) return 0;
+        instance.destroy();
+        return 1;
+      }
+      const currentInstances = Array.from(declarativeInstances.values());
+      currentInstances.forEach(instance => instance.destroy());
+      return currentInstances.length;
     }
 
     _initTargets(target) {
@@ -846,6 +919,7 @@
       this._writeExpanded(false);
       this._writeOpenClass(false);
       this._cancelLongPress();
+      this._clearTypeAhead();
       if (this._rafId != null) {
         if (this._rafIsTimeout) clearTimeout(this._rafId);
         else if (typeof cancelAnimationFrame === 'function') cancelAnimationFrame(this._rafId);
@@ -1041,10 +1115,11 @@
       if (owner && this.options.items[Number(owner.dataset.index)] && this.options.items[Number(owner.dataset.index)].element) return;
       e.preventDefault();
       const cols = this.options.layout === 'grid' ? (this.options.columns || 3) : 1;
+      const rtl = typeof document !== 'undefined' && document.dir === 'rtl';
       if (e.key === 'ArrowDown') this._setFocusedIndex(Math.min(items.length - 1, this.focusedIndex < 0 ? 0 : this.focusedIndex + cols));
       else if (e.key === 'ArrowUp') this._setFocusedIndex(Math.max(0, this.focusedIndex < 0 ? 0 : this.focusedIndex - cols));
-      else if (e.key === 'ArrowRight' && this.options.layout === 'grid') this._setFocusedIndex(Math.min(items.length - 1, this.focusedIndex < 0 ? 0 : this.focusedIndex + 1));
-      else if (e.key === 'ArrowLeft' && this.options.layout === 'grid') this._setFocusedIndex(Math.max(0, this.focusedIndex < 0 ? 0 : this.focusedIndex - 1));
+      else if (e.key === 'ArrowRight' && this.options.layout === 'grid') this._setFocusedIndex(Math.max(0, Math.min(items.length - 1, this.focusedIndex < 0 ? 0 : this.focusedIndex + (rtl ? -1 : 1))));
+      else if (e.key === 'ArrowLeft' && this.options.layout === 'grid') this._setFocusedIndex(Math.max(0, Math.min(items.length - 1, this.focusedIndex < 0 ? 0 : this.focusedIndex + (rtl ? 1 : -1))));
       else if (e.key === 'Home') this._setFocusedIndex(0);
       else if (e.key === 'End') this._setFocusedIndex(items.length - 1);
       else if ((e.key === 'Enter' || e.key === ' ') && this.focusedIndex >= 0 && this.focusedIndex < items.length) {
@@ -1052,6 +1127,49 @@
         const item = this.options.items[itemIndex];
         if (item) this._handleItemClick(item, e);
       }
+    }
+
+    _handleTypeAhead(e) {
+      if (!this.visible || this._getRole() !== 'menu' || e.ctrlKey || e.metaKey || e.altKey ||
+          typeof e.key !== 'string' || Array.from(e.key).length !== 1 || e.key === ' ') return;
+      const target = e.target && e.target.nodeType === 1 ? e.target : e.target && e.target.parentElement;
+      if (target && target.closest('input, textarea, select, [contenteditable="true"]')) return;
+
+      const character = e.key.toLocaleLowerCase();
+      if (this._typeAheadBuffer && this._typeAheadBuffer.split('').every(value => value === character)) {
+        this._typeAheadBuffer = character;
+      } else {
+        this._typeAheadBuffer += character;
+      }
+      if (this._typeAheadTimer) clearTimeout(this._typeAheadTimer);
+      this._typeAheadTimer = setTimeout(() => this._clearTypeAhead(), 500);
+
+      const items = this._getEnabledItems();
+      const findMatch = query => {
+        for (let offset = 1; offset <= items.length; offset += 1) {
+          const index = (this.focusedIndex + offset + items.length) % items.length;
+          const itemIndex = Number(items[index].dataset.index);
+          const item = this.options.items[itemIndex];
+          const label = (item && typeof item.label === 'string' ? item.label : items[index].textContent).trim().toLocaleLowerCase();
+          if (label.startsWith(query)) {
+            this._setFocusedIndex(index);
+            return true;
+          }
+        }
+        return false;
+      };
+
+      if (!findMatch(this._typeAheadBuffer) && this._typeAheadBuffer.length > character.length) {
+        this._typeAheadBuffer = character;
+        findMatch(character);
+      }
+      e.preventDefault();
+    }
+
+    _clearTypeAhead() {
+      if (this._typeAheadTimer) clearTimeout(this._typeAheadTimer);
+      this._typeAheadTimer = null;
+      this._typeAheadBuffer = '';
     }
 
     updateItems(items) {
@@ -1064,6 +1182,7 @@
       this.hide({ restoreFocus: false });
       this._unbindTargetEvents();
       this._cancelLongPress();
+      this._clearTypeAhead();
       if (this._rafId != null) {
         if (this._rafIsTimeout) clearTimeout(this._rafId);
         else if (typeof cancelAnimationFrame === 'function') cancelAnimationFrame(this._rafId);
@@ -1076,6 +1195,9 @@
       this.arrowEl = null;
       this.targetEls = [];
       this.triggerOrigin = null;
+      declarativeInstances.forEach((instance, root) => {
+        if (instance === this) declarativeInstances.delete(root);
+      });
     }
   }
 
