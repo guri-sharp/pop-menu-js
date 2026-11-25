@@ -1,0 +1,36 @@
+{
+  "name": "pop-context",
+  "version": "2.3.0",
+  "description": "Lightweight, accessible, multi-trigger custom context menu library.",
+  "main": "src/pop-context.js",
+  "style": "src/pop-context.css",
+  "files": [
+    "src/",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/guri-sharp/pop-context.git"
+  },
+  "keywords": [
+    "context-menu",
+    "contextmenu",
+    "menu",
+    "pop-context",
+    "ui",
+    "accessibility",
+    "a11y",
+    "custom-menu",
+    "javascript"
+  ],
+  "author": "guri-sharp, inu",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/guri-sharp/pop-context/issues"
+  },
+  "homepage": "https://github.com/guri-sharp/pop-context"
+}

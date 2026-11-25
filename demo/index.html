@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PopContext.js - 動作確認・検証用デモ</title>
+  
+  <!-- FontAwesome (アイコン用) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- PopContext ベーススタイルシート -->
+  <link rel="stylesheet" href="../src/pop-context.css">
+
+  <style>
+    :root {
+      --bg-color: #f8fafc;
+      --card-bg: #ffffff;
+      --text-main: #1e293b;
+      --text-sub: #64748b;
+      --border-color: #e2e8f0;
+      --primary: #3b82f6;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      margin: 0;
+      padding: 40px 20px;
+      line-height: 1.5;
+    }
+
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+    }
+
+    header {
+      margin-bottom: 32px;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 20px;
+    }
+
+    h1 {
+      margin: 0 0 8px 0;
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .badge {
+      background: #e0f2fe;
+      color: #0369a1;
+      font-size: 13px;
+      padding: 4px 10px;
+      border-radius: 9999px;
+      font-weight: 600;
+    }
+
+    p.subtitle {
+      color: var(--text-sub);
+      margin: 0;
+      font-size: 15px;
+    }
+
+    .demo-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 24px;
+      margin-bottom: 32px;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 2px dashed #cbd5e1;
+      border-radius: 14px;
+      padding: 28px 20px;
+      text-align: center;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      transition: all 0.2s ease;
+      position: relative;
+    }
+
+    .card.interactive {
+      cursor: pointer;
+    }
+
+    .card.interactive:hover {
+      border-color: var(--primary);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(59,130,246,0.1);
+    }
+
+    .card h3 {
+      margin: 0 0 8px 0;
+      font-size: 16px;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .card p {
+      font-size: 13px;
+      color: var(--text-sub);
+      margin: 0;
+    }
+
+    .btn {
+      background: var(--primary);
+      color: #ffffff;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 14px;
+      transition: background 0.15s, transform 0.1s;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 2px 4px rgba(59,130,246,0.2);
+    }
+
+    .btn:hover {
+      background: #2563eb;
+    }
+
+    .btn:active {
+      transform: scale(0.98);
+    }
+
+    /* 5絵文字リアクション（ピル型）カスタムスタイル */
+    .pop-context-menu.pc-pill-reaction {
+      --pc-radius: 9999px;
+      --pc-bg: #ffffff;
+      --pc-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+      padding: 6px 10px;
+      border: 1px solid #e2e8f0;
+    }
+
+    .pop-context-menu.pc-pill-reaction .pc-item-list {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0;
+      min-width: auto;
+    }
+
+    .pop-context-menu.pc-pill-reaction .pc-item {
+      width: 38px;
+      height: 38px;
+      padding: 0;
+      border-radius: 50%;
+      font-size: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275), background-color 0.15s;
+    }
+
+    .pop-context-menu.pc-pill-reaction .pc-item:hover,
+    .pop-context-menu.pc-pill-reaction .pc-item.is-focused {
+      transform: scale(1.35);
+      background-color: #f1f5f9;
+    }
+
+    /* ログ表示エリア */
+    .log-section {
+      background: #0f172a;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    .log-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      color: #94a3b8;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .log-clear-btn {
+      background: #334155;
+      color: #cbd5e1;
+      border: none;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .log-clear-btn:hover {
+      background: #475569;
+      color: #ffffff;
+    }
+
+    .log-console {
+      color: #38bdf8;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 13px;
+      height: 160px;
+      overflow-y: auto;
+      margin: 0;
+    }
+
+    .log-line {
+      margin: 4px 0;
+      word-break: break-all;
+    }
+
+    .log-time {
+      color: #64748b;
+      margin-right: 8px;
+    }
+
+    .log-tag {
+      color: #a855f7;
+      font-weight: bold;
+      margin-right: 6px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <h1>🚀 PopContext.js <span class="badge">動作検証デモ</span></h1>
+      <p class="subtitle">各種設定・レイアウト・トリガーでの表示と動作をインタラクティブにテストできます。</p>
+    </header>
+
+    <div class="demo-grid">
+      <!-- 1. 標準リスト (右クリック) -->
+      <div class="card interactive" id="demo-list">
+        <h3><i class="fa-solid fa-mouse-pointer"></i> 1. 標準リスト</h3>
+        <p>このカード内で右クリックしてください</p>
+      </div>
+
+      <!-- 2. 絵文字リアクション (ピル形状・5列) -->
+      <div class="card interactive" id="demo-reactions">
+        <h3><i class="fa-solid fa-icons"></i> 2. 絵文字リアクション</h3>
+        <p>右クリックで横5連ピル型ピッカーを表示</p>
+      </div>
+
+      <!-- 3. ダークテーマ -->
+      <div class="card interactive" id="demo-dark" style="background: #1e293b; border-color: #334155;">
+        <h3 style="color: #f8fafc;"><i class="fa-solid fa-moon"></i> 3. ダークテーマ</h3>
+        <p style="color: #94a3b8;">ダークモーショングラデーション表示</p>
+      </div>
+
+      <!-- 4. 左クリックボタン -->
+      <div class="card">
+        <h3><i class="fa-solid fa-hand-pointer"></i> 4. 左クリック起動</h3>
+        <p style="margin-bottom: 12px;">ボタンを押してメニューを展開</p>
+        <button class="btn" id="demo-btn"><i class="fa-solid fa-bars"></i> メニューを開く</button>
+      </div>
+
+      <!-- 5. モバイル長押し (Long Press) -->
+      <div class="card interactive" id="demo-longpress">
+        <h3><i class="fa-solid fa-mobile-screen"></i> 5. 長押し (Touch)</h3>
+        <p>スマホやタブレットで 500ms 長押し</p>
+      </div>
+
+      <!-- 6. グリッドレイアウト (4列) -->
+      <div class="card interactive" id="demo-grid">
+        <h3><i class="fa-solid fa-grip"></i> 6. グリッド (4列)</h3>
+        <p>4列アイコンレイアウト表示</p>
+      </div>
+    </div>
+
+    <!-- コンソールログ -->
+    <div class="log-section">
+      <div class="log-header">
+        <span><i class="fa-solid fa-terminal"></i> イベントログ</span>
+        <button class="log-clear-btn" onclick="clearLog()">クリア</button>
+      </div>
+      <div class="log-console" id="log-console">
+        <div class="log-line"><span class="log-time">[00:00:00]</span><span class="log-tag">[SYSTEM]</span>PopContext.js 準備完了。エリア上で操作テストを行ってください。</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PopContext ライブラリ本体 (ローカルファイル読み込み) -->
+  <script src="../src/pop-context.js"></script>
+
+  <script>
+    // ログ記録用ユーティリティ
+    function log(tag, message) {
+      const consoleEl = document.getElementById('log-console');
+      const time = new Date().toLocaleTimeString();
+      const div = document.createElement('div');
+      div.className = 'log-line';
+      div.innerHTML = `<span class="log-time">[${time}]</span><span class="log-tag">[${tag}]</span>${message}`;
+      consoleEl.appendChild(div);
+      consoleEl.scrollTop = consoleEl.scrollHeight;
+    }
+
+    function clearLog() {
+      document.getElementById('log-console').innerHTML = '';
+      log('SYSTEM', 'ログをクリアしました。');
+    }
+
+    // PopContext インスタンスの生成とイベントバインド
+
+    // 1. 標準リスト (右クリック)
+    new PopContext('#demo-list', {
+      trigger: 'contextmenu',
+      items: [
+        { label: '元に戻す', icon: 'fa-solid fa-rotate-left', shortcut: 'Ctrl+Z', onClick: () => log('LIST', '「元に戻す」を実行') },
+        { label: 'やり直し', icon: 'fa-solid fa-rotate-right', shortcut: 'Ctrl+Y', disabled: true },
+        { divider: true },
+        { label: 'コピー', icon: 'fa-solid fa-copy', shortcut: 'Ctrl+C', onClick: () => log('LIST', '「コピー」を実行') },
+        { label: '切り取り', icon: 'fa-solid fa-scissors', shortcut: 'Ctrl+X', onClick: () => log('LIST', '「切り取り」を実行') },
+        { label: '貼り付け', icon: 'fa-solid fa-paste', shortcut: 'Ctrl+V', onClick: () => log('LIST', '「貼り付け」を実行') },
+        { divider: true },
+        { label: '削除', icon: 'fa-solid fa-trash', danger: true, onClick: () => log('LIST', '「削除」を実行') }
+      ]
+    });
+
+    // 2. 絵文字リアクションピッカー (横5列・ピル型)
+    new PopContext('#demo-reactions', {
+      trigger: 'contextmenu',
+      layout: 'grid',
+      columns: 5,
+      className: 'pc-pill-reaction',
+      items: [
+        { icon: '👍', onClick: () => log('REACTION', '👍（いいね）を送信しました') },
+        { icon: '❤️', onClick: () => log('REACTION', '❤️（ハート）を送信しました') },
+        { icon: '😂', onClick: () => log('REACTION', '😂（ウケる）を送信しました') },
+        { icon: '😮', onClick: () => log('REACTION', '😮（びっくり）を送信しました') },
+        { icon: '🔥', onClick: () => log('REACTION', '🔥（ファイヤー）を送信しました') }
+      ]
+    });
+
+    // 3. ダークテーマ
+    new PopContext('#demo-dark', {
+      theme: 'dark',
+      items: [
+        { label: 'プロフィール管理', icon: 'fa-solid fa-user-gear', onClick: () => log('DARK', 'プロフィール管理を選択') },
+        { label: 'システム設定', icon: 'fa-solid fa-sliders', onClick: () => log('DARK', 'システム設定を選択') },
+        { divider: true },
+        { label: 'サインアウト', icon: 'fa-solid fa-right-from-bracket', danger: true, onClick: () => log('DARK', 'サインアウトを選択') }
+      ]
+    });
+
+    // 4. 左クリック起動
+    new PopContext('#demo-btn', {
+      trigger: 'click',
+      offset: { x: 0, y: 8 },
+      items: [
+        { label: '新規ドキュメント', icon: 'fa-solid fa-file-circle-plus', onClick: () => log('CLICK', '新規ドキュメントを作成') },
+        { label: 'フォルダを開く', icon: 'fa-solid fa-folder-open', onClick: () => log('CLICK', 'フォルダを開きました') },
+        { label: 'プロジェクトをエクスポート', icon: 'fa-solid fa-file-export', onClick: () => log('CLICK', 'エクスポートを開始') }
+      ]
+    });
+
+    // 5. モバイル長押し
+    new PopContext('#demo-longpress', {
+      trigger: 'longpress',
+      longPressDuration: 500,
+      items: [
+        { label: 'メッセージを固定', icon: 'fa-solid fa-thumbtack', onClick: () => log('LONGPRESS', 'メッセージをピン留め') },
+        { label: 'メッセージに返信', icon: 'fa-solid fa-reply', onClick: () => log('LONGPRESS', '返信フォームを開く') },
+        { divider: true },
+        { label: '非表示にする', icon: 'fa-solid fa-eye-slash', danger: true, onClick: () => log('LONGPRESS', 'メッセージを非表示化') }
+      ]
+    });
+
+    // 6. グリッド (4列)
+    new PopContext('#demo-grid', {
+      layout: 'grid',
+      columns: 4,
+      items: [
+        { label: '画像', icon: 'fa-solid fa-image', onClick: () => log('GRID', '画像を選択') },
+        { label: '動画', icon: 'fa-solid fa-video', onClick: () => log('GRID', '動画を選択') },
+        { label: '音声', icon: 'fa-solid fa-music', onClick: () => log('GRID', '音声を選択') },
+        { label: '文書', icon: 'fa-solid fa-file-lines', onClick: () => log('GRID', '文書を選択') },
+        { label: '位置情報', icon: 'fa-solid fa-location-dot', onClick: () => log('GRID', '位置情報を送信') },
+        { label: '連絡先', icon: 'fa-solid fa-address-book', onClick: () => log('GRID', '連絡先を共有') },
+        { label: 'カメラ', icon: 'fa-solid fa-camera', onClick: () => log('GRID', 'カメラを起動') },
+        { label: '削除', icon: 'fa-solid fa-trash', danger: true, onClick: () => log('GRID', 'アイテムを削除') }
+      ]
+    });
+  </script>
+</body>
+</html>
