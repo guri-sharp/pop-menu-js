@@ -1,5 +1,5 @@
 /* ==========================================================================
-   PopContext - Base Stylesheet v2.3.0
+   PopContext - Base Stylesheet v2.4.0
    ========================================================================== */
 
 .pop-context-menu {
@@ -8,17 +8,15 @@
   --pc-border: #e0e0e0;
   --pc-text: #333333;
   --pc-hover-bg: #f5f5f5;
-  --pc-focus-bg: #e8f0fe;
-  --pc-focus-text: #1a73e8;
   --pc-divider: #eeeeee;
   --pc-danger: #e53935;
   --pc-danger-hover: #ffebee;
-  --pc-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  --pc-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
   --pc-radius: 10px;
   --pc-font-size: 14px;
   --pc-icon-size: 18px;
   --pc-grid-icon-size: 26px;
-  --pc-grid-min-col-width: 68px;
+  --pc-grid-min-col-width: 60px;
 
   position: fixed;
   display: none;
@@ -30,8 +28,8 @@
   border: 1px solid var(--pc-border);
   border-radius: var(--pc-radius);
   box-shadow: var(--pc-shadow);
-  min-width: 180px;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  min-width: 160px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   font-size: var(--pc-font-size);
   color: var(--pc-text);
   user-select: none;
@@ -51,27 +49,57 @@
   }
 }
 
+/* 吹き出しの尻尾 (Arrow) */
+.pop-context-menu.has-arrow .pc-arrow {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background-color: var(--pc-bg);
+  border: 1px solid var(--pc-border);
+  transform: rotate(45deg);
+  pointer-events: none;
+  z-index: -1;
+}
+
+.pop-context-menu.has-arrow.pc-arrow-top .pc-arrow {
+  top: -7px;
+  left: 20px;
+  border-right: none;
+  border-bottom: none;
+}
+
+.pop-context-menu.has-arrow.pc-arrow-bottom .pc-arrow {
+  bottom: -7px;
+  left: 20px;
+  border-left: none;
+  border-top: none;
+}
+
 /* ダークテーマ */
 .pop-context-menu.theme-dark {
   --pc-bg: #242526;
   --pc-border: #3a3b3c;
   --pc-text: #e4e6eb;
   --pc-hover-bg: #3a3b3c;
-  --pc-focus-bg: #2d3f5d;
-  --pc-focus-text: #60a5fa;
   --pc-divider: #3e4042;
   --pc-danger: #ff6b6b;
   --pc-danger-hover: #3d2425;
-  --pc-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+  --pc-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
 }
 
-/* リストレイアウト */
+/* リスト・グリッド共通コンテナ */
 .pc-item-list {
   list-style: none;
   margin: 0;
   padding: 0;
 }
 
+/* カスタムコンテナ */
+.pc-custom-container {
+  box-sizing: border-box;
+}
+
+/* リストレイアウト */
 .pop-context-menu.pc-layout-list .pc-item {
   display: flex;
   align-items: center;
@@ -102,10 +130,10 @@
   margin-left: auto;
 }
 
-/* グリッド（テーブル）レイアウト */
+/* グリッドレイアウト */
 .pop-context-menu.pc-layout-grid .pc-item-list {
   display: grid;
-  padding: 8px;
+  padding: 6px;
   gap: 4px;
   grid-template-columns: repeat(var(--pc-columns, 3), 1fr);
   min-width: calc(var(--pc-columns, 3) * var(--pc-grid-min-col-width));
@@ -117,11 +145,11 @@
   align-items: center;
   justify-content: center;
   gap: 4px;
-  padding: 10px 6px;
+  padding: 8px 4px;
   border-radius: 6px;
   cursor: pointer;
   color: var(--pc-text);
-  transition: background-color 0.15s, color 0.15s;
+  transition: background-color 0.15s;
 }
 
 .pop-context-menu.pc-layout-grid .pc-icon {
@@ -143,7 +171,43 @@
   white-space: nowrap;
 }
 
-/* 共通パーツ・状態 */
+/* 5絵文字リアクション（ピル型）特別スタイル */
+.pop-context-menu.pc-pill-reaction {
+  --pc-radius: 9999px;
+  --pc-bg: #ffffff;
+  --pc-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  padding: 4px 8px;
+  border: 1px solid #e2e8f0;
+  min-width: auto;
+}
+
+.pop-context-menu.pc-pill-reaction .pc-item-list {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  min-width: auto;
+}
+
+.pop-context-menu.pc-pill-reaction .pc-item {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275), background-color 0.15s;
+}
+
+.pop-context-menu.pc-pill-reaction .pc-item:hover,
+.pop-context-menu.pc-pill-reaction .pc-item.is-focused {
+  transform: scale(1.35);
+  background-color: #f1f5f9;
+}
+
+/* 共通ホバー・フォーカス */
 .pop-context-menu .pc-item:hover,
 .pop-context-menu .pc-item.is-focused {
   background-color: var(--pc-hover-bg);

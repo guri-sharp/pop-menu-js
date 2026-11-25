@@ -1,6 +1,6 @@
 /**
- * PopContext v2.3.0
- * Lightweight, accessible, multi-trigger custom context menu library with Grid & List layouts.
+ * PopContext v2.4.0
+ * Lightweight, accessible, multi-trigger custom context menu library with Custom Content & Arrow support.
  */
 (function (global, factory) {
   if (typeof module === 'object' && typeof module.exports === 'object') {
@@ -106,9 +106,11 @@
     constructor(target, options = {}) {
       this.options = Object.assign({
         items: [],
+        customContent: null, // string | HTMLElement | function(container, inst)
         trigger: 'contextmenu', // 'contextmenu' | 'click' | 'longpress'
         layout: 'list', // 'list' | 'grid'
         columns: 3,
+        arrow: false, // 吹き出しの尻尾 (Arrow)
         longPressDuration: 500,
         theme: 'default', // 'default' | 'dark'
         className: '',
@@ -123,11 +125,13 @@
 
       this.targetEls = [];
       this.menuEl = null;
+      this.arrowEl = null;
       this.visible = false;
       this.focusedIndex = -1;
       this.lastPosition = { x: 0, y: 0 };
       this.triggerOrigin = null;
       this.longPressTimer = null;
+      this.currentFlipState = { flipX: false, flipY: false };
 
       this._initTargets(target);
       if (typeof document !== 'undefined') {
@@ -153,14 +157,21 @@
     _createMenuElement() {
       if (typeof document === 'undefined') return;
       this.menuEl = document.createElement('div');
-      const layoutClass = `pc-layout-${this.options.layout === 'grid' ? 'grid' : 'list'}`;
-      this.menuEl.className = `pop-context-menu theme-${this.options.theme} ${layoutClass} ${this.options.className}`.trim();
+      const layoutClass = this.options.customContent ? 'pc-layout-custom' : `pc-layout-${this.options.layout === 'grid' ? 'grid' : 'list'}`;
+      const arrowClass = this.options.arrow ? 'has-arrow' : '';
+      this.menuEl.className = `pop-context-menu theme-${this.options.theme} ${layoutClass} ${arrowClass} ${this.options.className}`.trim();
       this.menuEl.setAttribute('role', 'menu');
       this.menuEl.setAttribute('aria-hidden', 'true');
       this.menuEl.setAttribute('tabindex', '-1');
 
       if (this.options.layout === 'grid') {
         this.menuEl.style.setProperty('--pc-columns', this.options.columns);
+      }
+
+      if (this.options.arrow) {
+        this.arrowEl = document.createElement('div');
+        this.arrowEl.className = 'pc-arrow';
+        this.menuEl.appendChild(this.arrowEl);
       }
 
       Object.assign(this.menuEl.style, {
@@ -172,13 +183,39 @@
         outline: 'none'
       });
 
-      this._renderItems(this.options.items);
+      this._renderContent();
       document.body.appendChild(this.menuEl);
     }
 
-    _renderItems(items) {
+    _renderContent() {
       if (!this.menuEl || typeof document === 'undefined') return;
-      this.menuEl.innerHTML = '';
+
+      // 古いアイテムリストまたはカスタムコンテナをクリア（矢印要素は残す）
+      Array.from(this.menuEl.childNodes).forEach(node => {
+        if (node !== this.arrowEl) {
+          this.menuEl.removeChild(node);
+        }
+      });
+
+      if (this.options.customContent) {
+        const customContainer = document.createElement('div');
+        customContainer.className = 'pc-custom-container';
+
+        if (typeof this.options.customContent === 'string') {
+          customContainer.innerHTML = this.options.customContent;
+        } else if (this.options.customContent && this.options.customContent.nodeType === 1) {
+          customContainer.appendChild(this.options.customContent);
+        } else if (typeof this.options.customContent === 'function') {
+          this.options.customContent.call(this, customContainer, this);
+        }
+
+        this.menuEl.appendChild(customContainer);
+      } else {
+        this._renderItems(this.options.items);
+      }
+    }
+
+    _renderItems(items) {
       const ul = document.createElement('ul');
       ul.className = 'pc-item-list';
       ul.setAttribute('role', 'presentation');
@@ -210,10 +247,12 @@
           li.appendChild(iconContainer);
         }
 
-        const labelSpan = document.createElement('span');
-        labelSpan.className = 'pc-label';
-        labelSpan.textContent = item.label || '';
-        li.appendChild(labelSpan);
+        if (item.label) {
+          const labelSpan = document.createElement('span');
+          labelSpan.className = 'pc-label';
+          labelSpan.textContent = item.label || '';
+          li.appendChild(labelSpan);
+        }
 
         if (item.shortcut && this.options.layout !== 'grid') {
           const shortcutSpan = document.createElement('span');
@@ -362,16 +401,19 @@
       const winWidth = window.innerWidth;
       const winHeight = window.innerHeight;
       const margin = 8;
+      const arrowOffset = this.options.arrow ? 10 : 0;
 
       let posX = x + this.options.offset.x;
-      let posY = y + this.options.offset.y;
+      let posY = y + this.options.offset.y + (this.options.arrow ? 8 : 0);
+      let flipY = false;
 
       if (this.options.autoFlip) {
         if (posX + rect.width > winWidth - margin) {
           posX = x - rect.width - this.options.offset.x;
         }
         if (posY + rect.height > winHeight - margin) {
-          posY = y - rect.height - this.options.offset.y;
+          posY = y - rect.height - this.options.offset.y - (this.options.arrow ? 16 : 0);
+          flipY = true;
         }
       }
 
@@ -380,6 +422,11 @@
 
       this.menuEl.style.left = `${posX}px`;
       this.menuEl.style.top = `${posY}px`;
+
+      if (this.options.arrow && this.arrowEl) {
+        this.menuEl.classList.toggle('pc-arrow-top', !flipY);
+        this.menuEl.classList.toggle('pc-arrow-bottom', flipY);
+      }
     }
 
     hide() {
@@ -399,6 +446,14 @@
 
       if (typeof this.options.onHide === 'function') {
         this.options.onHide.call(this);
+      }
+    }
+
+    setCustomContent(content) {
+      this.options.customContent = content;
+      this._renderContent();
+      if (this.visible) {
+        this._reposition();
       }
     }
 
@@ -472,7 +527,8 @@
 
     updateItems(newItems) {
       this.options.items = newItems;
-      this._renderItems(newItems);
+      this.options.customContent = null;
+      this._renderContent();
     }
 
     destroy() {
