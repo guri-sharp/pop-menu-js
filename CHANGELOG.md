@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.1.1
+
+- Prevented popovers from flashing at the top-left before their anchor position is applied.
+
 ## 3.1.0
 
 - Made popover opening motion easier to notice while continuing to respect reduced-motion preferences.

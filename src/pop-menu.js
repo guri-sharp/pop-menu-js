@@ -1,5 +1,5 @@
 /**
- * PopMenu JS v3.1.0
+ * PopMenu JS v3.1.1
  * Lightweight, accessible, multi-trigger custom context menu with element positioning.
  */
 (function (global, factory) {
@@ -1004,6 +1004,8 @@
       instances.forEach(inst => {
         if (inst !== this && inst.visible) inst.hide({ restoreFocus: false });
       });
+      const previousVisibility = this.menuEl.style.visibility;
+      this.menuEl.style.visibility = 'hidden';
       this.menuEl.style.display = 'block';
       if (this.options.syncHidden) this.menuEl.hidden = false;
       this.menuEl.setAttribute('aria-hidden', 'false');
@@ -1011,7 +1013,11 @@
       this.visible = true;
       this._writeExpanded(true);
       this._writeOpenClass(true);
-      this._reposition();
+      try {
+        this._reposition();
+      } finally {
+        this.menuEl.style.visibility = previousVisibility;
+      }
       if (!this.visible) return;
       this._setFocusedIndex(-1);
       this._focusInitial();
