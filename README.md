@@ -83,6 +83,13 @@ new PopContext('#color-btn', {
 | `presentation` | `'popover'` \| `'sheet'` | `'popover'` | 表示形式。`sheet` は画面下部に固定 |
 | `backdrop` | `boolean` | `true` | `sheet` 表示時に背景オーバーレイを表示 |
 | `swipeToDismiss` | `boolean` | `true` | `sheet` のドラッグハンドルを下へスワイプして閉じる |
+| `scrollLock` / `inertBackground` | `boolean` | `true` | `sheet` + backdrop 時に背景をスクロール・操作不可にする |
+| `sheetLabel` | `string` | `'閉じる'` | キーボード操作可能なシートハンドルのラベル |
+| `detents` | `Array<'content' \| 'half' \| 'full' \| number>` | `['content']` | シートの高さ候補。数値はビューポート高に対する割合 |
+| `defaultDetent` | `string \| number` | `'content'` | シート表示時のデテント |
+| `dismissThreshold` / `dismissVelocity` | `number` | `0.25` / `0.5` | 下スワイプの距離割合と速度閾値（px/ms） |
+| `dismissDirection` | `'vertical'` | `'vertical'` | 縦方向のジェスチャーだけを閉じ操作として扱う |
+| `onDetentChange` | `Function \| null` | `null` | デテント変更時に `onDetentChange(detent, instance)` を呼び出す |
 | `trigger` | `'contextmenu'` \| `'click'` \| `'longpress'` \| `'manual'` | `'contextmenu'` | 起動トリガー |
 | `delegate` | `string` \| `null` | `null` | 親要素上で動的な子要素のイベントを委譲する CSS セレクター |
 | `longPressDuration` | `number` | `500` | 長押し成立までの時間（ms） |
@@ -100,7 +107,7 @@ new PopContext('#color-btn', {
 | `toggle` | `boolean` | `false` | 同じトリガーを再操作したときに閉じる |
 | `preventDefaultTrigger` | `boolean` | `true` | click トリガーの既定動作を抑止 |
 | `followScroll` / `followResize` | `boolean` | `false` | `hideOnScroll` / `hideOnResize` を `false` にした場合に追従 |
-| `hideOnScroll` / `hideOnResize` | `boolean` | `true` | スクロール／リサイズ時に閉じる（追従より優先） |
+| `hideOnScroll` / `hideOnResize` | `boolean` | popover: `true`, sheet: `false` | スクロール／リサイズ時に閉じる（追従より優先）。sheet は明示指定時のみ閉じる |
 | `closeOnSelect` / `closeOnOutsideClick` / `closeOnEscape` | `boolean` | `true` | 各操作時にメニューを閉じる |
 | `openClass` | `string` | `''` | 表示中にターゲットへ付けるクラス |
 | `syncHidden` | `boolean` | `false` | `menuEl.hidden` を表示状態に同期 |
@@ -108,7 +115,7 @@ new PopContext('#color-btn', {
 | `arrowOffset` | `number` \| `null` | `null` | 矢印の水平位置（px） |
 | `aria` | `object` | `{ haspopup: 'menu', controls: null, expanded: true }` | トリガーに付与する ARIA 属性を制御 |
 | `ariaLabel` | `string` | `''` | メニューの `aria-label` |
-| `role` | `string` \| `null` | `null` | メニューの role。未指定時は items が `menu`、customContent が `dialog` |
+| `role` | `string` \| `null` | `null` | 未指定時は通常 items が `menu`、customContent と backdrop 付き sheet が `dialog` |
 | `emptyText` | `string` | `''` | 有効な項目がない場合に表示する文言 |
 | `onBeforeShow` | `Function` \| `null` | `null` | 表示直前に呼び出すフック |
 
@@ -124,6 +131,8 @@ const menu = new PopContext('#actions', {
 menu.setTarget(document.querySelector('#row-1'));
 menu.show();
 ```
+
+`delegate` を使う場合、ARIA 属性と `openClass` は静的なターゲットにのみ適用され、委譲先の動的要素には追加されません。
 
 ### 項目スキーマ
 
@@ -158,6 +167,7 @@ menu.show();
 | `setCustomContent(content)` | カスタム内容を更新。`null` で `items` 表示に戻す |
 | `setOptions(patch)` | オプションを部分更新（`items` と `customContent` は専用メソッドを使用） |
 | `reposition()` | 現在のアンカーに合わせて再配置 |
+| `getDetent()` / `setDetent(detent)` | 現在のシート高さを取得・変更（値は `detents` に含める） |
 | `destroy()` | リスナー、DOM、ライブラリが付与した属性を解放・復元 |
 
 ### 宣言的初期化
@@ -182,6 +192,8 @@ PopContext.autoDestroy(document);
 
 `autoInit(root)` は明示的に呼び出してください。root 内の `[data-pop-context]` 要素を click トリガーとして委譲し、後から追加された要素にも対応します。一致する要素がまだないrootでも初期化でき、同じrootへの再呼び出しでは既存インスタンスを返します。重複した委譲を避けるため、重なり合うrootを別々に初期化しないでください。各ボタンの `data-pop-context-items` は `<template>` のセレクター、`data-pop-context-placement` は配置を指定します。指定したセレクターが `<template>` に一致しない場合、表示時にエラーになります。テンプレート内では `[data-pop-item]` が項目、`[data-pop-label]` がラベルです。`data-pop-role` / `data-pop-checked` / `data-pop-disabled` / `data-pop-hidden` / `data-pop-danger` / `data-pop-icon` / `data-pop-shortcut` も指定できます。`data-pop-divider` と `data-pop-group` は区切りと見出しです。自動初期化は既定では実行されません。`autoDestroy(root)` は指定rootのインスタンスを破棄し、引数なしでは自動初期化した全インスタンスを破棄します。
 
+`delegate` を使う場合、ARIA 属性と `openClass` は静的なターゲットにのみ適用され、委譲先の動的要素には追加されません。`PopContext.instancesCount()` は現在のインスタンス数を返し、破棄漏れのテストや診断に利用できます。
+
 ### ボトムシート
 
 ```javascript
@@ -194,7 +206,11 @@ new PopContext('#share', {
 });
 ```
 
-`presentation: 'sheet'` は明示指定で有効になり、既存の popover 表示は変わりません。シートは画面下部に固定され、長い内容はシート内でスクロールします。表示時は下からスライドしてフェードインし、閉じる時は下へスライドしてフェードアウトします。`prefers-reduced-motion` が有効な環境ではアニメーションを抑えます。既定の背景オーバーレイはクリックで閉じ、上部ハンドルを下へドラッグしても閉じられます。`backdrop` と `swipeToDismiss` は個別に無効化できます。
+`presentation: 'sheet'` は明示指定で有効になり、既存の popover 表示は変わりません。シートは画面下部に固定され、長い内容はスクロールバーを表示せずにシート内でスクロールします。上部のハンドルはスクロール中も固定されます。カスタム内容では、閉じるボタンなど固定したい要素自身に `pc-sheet-sticky` クラスを指定できます。タイトルなど他の内容は通常どおりスクロールします。表示時は下からスライドしてフェードインし、閉じる時は下へスライドしてフェードアウトします。`prefers-reduced-motion` が有効な環境ではアニメーションを抑えます。既定の背景オーバーレイはクリックで閉じ、上部ハンドルを下へドラッグしても閉じられます。`backdrop` と `swipeToDismiss` は個別に無効化できます。
+
+`sheet` は既定でスクロールロックと背景の `inert` 化を行い、items を使う場合もモーダルダイアログとして扱います。上部ハンドルはキーボードでフォーカスでき、Enter / Space で閉じられます。`detents: ['half', 'full']` のように高さ候補を指定すると、ハンドルのドラッグでスナップします。画面サイズの変化やソフトキーボード表示時は `visualViewport` に追従します。`anchor`, `placement`, `autoFlip`, `offset`, `viewportPadding`, `boundary`, `arrow` は sheet では配置に使われません。競合する `anchor`, `placement`, `arrow` の明示指定には警告が出ます。
+
+アニメーションと高さは `--pc-sheet-out-duration`、`--pc-backdrop-fade-duration`、`--pc-sheet-height`、`--pc-vv-height` の CSS 変数で調整できます。
 
 menu 表示中に文字を入力すると、有効項目のラベルを先頭一致で検索します。連続した同じ文字は候補を順送りし、入力バッファは500ms後にリセットされます。`document.dir === 'rtl'` の場合は `-start` / `-end` の配置とグリッドの左右キーを反転します。
 
@@ -288,6 +304,13 @@ menu.show();
 | `presentation` | `'popover'` \| `'sheet'` | `'popover'` | Presentation style. `'sheet'` pins the panel to the bottom of the viewport. |
 | `backdrop` | `boolean` | `true` | Show a backdrop for sheet presentation. |
 | `swipeToDismiss` | `boolean` | `true` | Allow dismissing a sheet by dragging its handle downward. |
+| `scrollLock` / `inertBackground` | `boolean` | `true` | Lock background scrolling and interaction for a sheet with a backdrop. |
+| `sheetLabel` | `string` | `'閉じる'` | Accessible label for the keyboard-focusable sheet handle. |
+| `detents` | `Array<'content' \| 'half' \| 'full' \| number>` | `['content']` | Sheet heights; numeric values are percentages of viewport height. |
+| `defaultDetent` | `string \| number` | `'content'` | Detent selected when the sheet opens. |
+| `dismissThreshold` / `dismissVelocity` | `number` | `0.25` / `0.5` | Downward swipe distance ratio and velocity threshold in px/ms. |
+| `dismissDirection` | `'vertical'` | `'vertical'` | Treat only vertical gestures as dismissal swipes. |
+| `onDetentChange` | `Function \| null` | `null` | Called as `onDetentChange(detent, instance)` when the selected detent changes. |
 | `trigger` | `'contextmenu'` \| `'click'` \| `'longpress'` \| `'manual'` | `'contextmenu'` | How the menu is opened. |
 | `longPressDuration` | `number` | `500` | Hold duration in milliseconds for the `longpress` trigger. |
 | `longPressMoveTolerance` | `number` | `10` | Cancel a long press when the pointer moves farther than this distance, in pixels. |
@@ -302,7 +325,7 @@ menu.show();
 | `boundary` | `Element` \| `null` | `null` | Positioning boundary. Defaults to the viewport. |
 | `toggle` | `boolean` | `false` | Close the menu when its open trigger is activated again. |
 | `preventDefaultTrigger` | `boolean` | `true` | Prevent the default action for a `click` trigger. `contextmenu` is always prevented. |
-| `hideOnScroll` / `hideOnResize` | `boolean` | `true` | Close the menu on scroll or resize. These take precedence over repositioning. |
+| `hideOnScroll` / `hideOnResize` | `boolean` | popover: `true`, sheet: `false` | Close on scroll or resize. Sheets stay open by default; explicit values are respected. |
 | `followScroll` / `followResize` | `boolean` | `false` | Reposition while scrolling or resizing when the corresponding hide option is disabled. |
 | `openClass` | `string` | `''` | Class added to the active trigger while the menu is open. |
 | `syncHidden` | `boolean` | `false` | Synchronize `menuEl.hidden` with the menu visibility. |
@@ -314,7 +337,7 @@ menu.show();
 | `zIndex` | `number` | `999999` | Popup stacking order. |
 | `aria` | `object` | `{ haspopup: 'menu', controls: null, expanded: true }` | Configure ARIA attributes managed on the trigger. Existing `aria-controls` values are preserved. |
 | `ariaLabel` | `string` | `''` | Accessible label applied to the popup. |
-| `role` | `string` \| `null` | `null` | Popup role. Defaults to `menu` for items and `dialog` for custom content. |
+| `role` | `string` \| `null` | `null` | Defaults to `menu` for regular items and `dialog` for custom content or a sheet with a backdrop. |
 | `emptyText` | `string` | `''` | Message shown when there are no enabled items. |
 | `onBeforeShow` | `Function` \| `null` | `null` | Called immediately before the menu opens. |
 | `onShow` / `onHide` / `onSelect` | `Function` \| `null` | `null` | Lifecycle and item-selection callbacks. |
@@ -330,6 +353,7 @@ menu.show();
 | `setCustomContent(content)` | Replace custom content; pass `null` to return to the item list. |
 | `setOptions(patch)` | Shallow-merge option updates. Use the dedicated methods to update `items` or `customContent`. |
 | `reposition()` | Recalculate the current position. |
+| `getDetent()` / `setDetent(detent)` | Read or change the current sheet height. The value must be in `detents`. |
 | `destroy()` | Remove the popup and listeners, and restore attributes managed by the instance. Safe to call more than once. |
 
 ### Declarative Initialization
@@ -354,6 +378,8 @@ PopContext.autoDestroy(document);
 
 Call `autoInit(root)` explicitly; it delegates click handling for `[data-pop-context]` elements in the root, including matching elements added later. It can be called before any matching elements exist, and repeated calls with the same root return the existing instance. Avoid initializing overlapping roots to prevent duplicate delegated handlers. Each trigger can select a `<template>` with `data-pop-context-items` and choose a placement with `data-pop-context-placement`; a specified selector that does not resolve to a template causes an error when the menu opens. Inside the template, `[data-pop-item]` marks an item and `[data-pop-label]` provides its label. Supported item attributes include `data-pop-role`, `data-pop-checked`, `data-pop-disabled`, `data-pop-hidden`, `data-pop-danger`, `data-pop-icon`, and `data-pop-shortcut`; use `data-pop-divider` and `data-pop-group` for separators and group labels. No automatic initialization runs unless requested. `autoDestroy(root)` destroys the instance for that exact root; without a root, it destroys all declaratively initialized instances.
 
+With `delegate`, managed ARIA attributes and `openClass` apply only to static targets; dynamically matched delegated elements do not receive them. `PopContext.instancesCount()` returns the number of active instances for cleanup tests and diagnostics.
+
 ### Bottom Sheets
 
 ```javascript
@@ -366,7 +392,11 @@ new PopContext('#share', {
 });
 ```
 
-The sheet presentation is opt-in and does not change existing popovers. It pins the panel to the bottom of the viewport and scrolls long content within the panel. It slides and fades in from the bottom when opening, then slides down and fades out when closing. Animations are reduced when `prefers-reduced-motion` is enabled. By default, the backdrop closes the sheet when clicked, and dragging the top handle downward also dismisses it. Disable either behavior with `backdrop: false` or `swipeToDismiss: false`.
+The sheet presentation is opt-in and does not change existing popovers. It pins the panel to the bottom of the viewport and scrolls long content within the panel without showing a scrollbar. The top handle remains fixed while scrolling. In custom content, add `pc-sheet-sticky` to an individual control, such as a close button, to keep only that control visible while the title and other content scroll normally. The sheet slides and fades in from the bottom when opening, then slides down and fades out when closing. Animations are reduced when `prefers-reduced-motion` is enabled. By default, the backdrop closes the sheet when clicked, and dragging the top handle downward also dismisses it. Disable either behavior with `backdrop: false` or `swipeToDismiss: false`.
+
+Sheets with a backdrop lock page scrolling, make background content inert, and use modal dialog semantics. The keyboard-focusable handle closes the sheet with Enter or Space. Set `detents: ['half', 'full']` to enable drag snapping; numeric detents represent viewport-height percentages. Visual viewport changes, including the on-screen keyboard, reposition the sheet. Positioning options (`anchor`, `placement`, `autoFlip`, `offset`, `viewportPadding`, `boundary`, and `arrow`) do not affect sheets. Explicit conflicting `anchor`, `placement`, or `arrow` values produce a warning.
+
+Customize motion and sizing with the `--pc-sheet-out-duration`, `--pc-backdrop-fade-duration`, `--pc-sheet-height`, and `--pc-vv-height` CSS variables.
 
 While a menu is open, typing searches enabled labels by prefix. Repeating a character cycles through matching items, and the search buffer resets after 500 ms. When `document.dir` is `rtl`, `-start` / `-end` placement and horizontal grid-key navigation are reversed.
 

@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.9.0
+
+- Fixed sheets closing on internal scrolling and being dismissed by visual viewport changes.
+- Added scroll locking, inert background handling, modal semantics, focus trapping, and a keyboard-accessible sheet handle.
+- Added visual viewport repositioning, coordinated close-animation completion, velocity-aware swipe dismissal, and optional sheet detents.
+- Added popover height constraints, IME-safe type-ahead, delegated-target ARIA cleanup, and `PopContext.instancesCount()`.
+- Warned about positioning options that do not apply to sheet presentation.
+
 ## 2.8.0
 
 - Added an opt-in bottom-sheet presentation with a backdrop and swipe-to-dismiss handle.

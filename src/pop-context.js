@@ -1,5 +1,5 @@
 /**
- * PopContext v2.8.0
+ * PopContext v2.9.0
  * Lightweight, accessible, multi-trigger custom context menu with element positioning.
  */
 (function (global, factory) {
@@ -17,6 +17,66 @@
   const declarativeInstances = new Map();
   let globalEventsBound = false;
   let menuId = 0;
+  let scrollLockCount = 0;
+  let scrollLockSnapshot = null;
+  let isComposing = false;
+
+  function getInlineStyle(element, property) {
+    return {
+      value: element.style.getPropertyValue(property),
+      priority: element.style.getPropertyPriority(property)
+    };
+  }
+
+  function restoreInlineStyle(element, property, saved) {
+    if (saved.value) element.style.setProperty(property, saved.value, saved.priority);
+    else element.style.removeProperty(property);
+  }
+
+  function acquireScrollLock() {
+    if (typeof document === 'undefined' || !document.documentElement || !document.body) return;
+    if (scrollLockCount > 0) {
+      scrollLockCount += 1;
+      return;
+    }
+
+    const root = document.documentElement;
+    const body = document.body;
+    const gutter = Math.max(0, window.innerWidth - root.clientWidth);
+    const supportsGutter = typeof CSS !== 'undefined' && CSS.supports &&
+      CSS.supports('scrollbar-gutter', 'stable');
+    scrollLockSnapshot = {
+      root,
+      body,
+      overflow: getInlineStyle(root, 'overflow'),
+      scrollbarGutter: getInlineStyle(root, 'scrollbar-gutter'),
+      paddingRight: getInlineStyle(body, 'padding-right'),
+      addedClass: !root.classList.contains('pc-scroll-locked')
+    };
+    root.classList.add('pc-scroll-locked');
+    root.style.setProperty('overflow', 'hidden');
+    if (supportsGutter) {
+      root.style.setProperty('scrollbar-gutter', 'stable');
+    } else if (gutter > 0) {
+      const currentPadding = parseFloat(window.getComputedStyle
+        ? window.getComputedStyle(body).paddingRight
+        : body.style.getPropertyValue('padding-right')) || 0;
+      body.style.setProperty('padding-right', `${currentPadding + gutter}px`);
+    }
+    scrollLockCount = 1;
+  }
+
+  function releaseScrollLock() {
+    if (scrollLockCount === 0) return;
+    scrollLockCount -= 1;
+    if (scrollLockCount > 0 || !scrollLockSnapshot) return;
+    const snapshot = scrollLockSnapshot;
+    scrollLockSnapshot = null;
+    restoreInlineStyle(snapshot.root, 'overflow', snapshot.overflow);
+    restoreInlineStyle(snapshot.root, 'scrollbar-gutter', snapshot.scrollbarGutter);
+    restoreInlineStyle(snapshot.body, 'padding-right', snapshot.paddingRight);
+    if (snapshot.addedClass) snapshot.root.classList.remove('pc-scroll-locked');
+  }
 
   function bindGlobalEvents() {
     if (globalEventsBound || typeof window === 'undefined') return;
@@ -27,29 +87,49 @@
     window.addEventListener('scroll', handleGlobalScroll, { passive: true, capture: true });
     window.addEventListener('resize', handleGlobalResize, { passive: true });
     window.addEventListener('keydown', handleGlobalKeyDown, true);
+    window.addEventListener('compositionstart', handleCompositionStart, true);
+    window.addEventListener('compositionend', handleCompositionEnd, true);
     if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', handleGlobalResize, { passive: true });
-      window.visualViewport.addEventListener('scroll', handleGlobalScroll, { passive: true });
+      window.visualViewport.addEventListener('resize', handleVisualViewportChange, { passive: true });
+      window.visualViewport.addEventListener('scroll', handleVisualViewportChange, { passive: true });
     }
   }
 
   function unbindGlobalEvents() {
     if (!globalEventsBound || instances.size > 0) return;
     globalEventsBound = false;
+    isComposing = false;
     window.removeEventListener('click', handleGlobalClick, true);
     window.removeEventListener('contextmenu', handleGlobalContextMenu, true);
     window.removeEventListener('touchstart', handleGlobalTouchStart);
     window.removeEventListener('scroll', handleGlobalScroll, true);
     window.removeEventListener('resize', handleGlobalResize);
     window.removeEventListener('keydown', handleGlobalKeyDown, true);
+    window.removeEventListener('compositionstart', handleCompositionStart, true);
+    window.removeEventListener('compositionend', handleCompositionEnd, true);
     if (window.visualViewport) {
-      window.visualViewport.removeEventListener('resize', handleGlobalResize);
-      window.visualViewport.removeEventListener('scroll', handleGlobalScroll);
+      window.visualViewport.removeEventListener('resize', handleVisualViewportChange);
+      window.visualViewport.removeEventListener('scroll', handleVisualViewportChange);
     }
+  }
+
+  function handleCompositionStart() {
+    isComposing = true;
+  }
+
+  function handleCompositionEnd() {
+    isComposing = false;
   }
 
   function isInsideTarget(inst, target) {
     return inst._isManagedTrigger(target);
+  }
+
+  function isEditableTarget(target) {
+    return Boolean(target && (
+      ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) ||
+      (target.closest && target.closest('[contenteditable="true"]'))
+    ));
   }
 
   function handleGlobalClick(e) {
@@ -76,19 +156,35 @@
     });
   }
 
-  function handleGlobalScroll() {
+  function handleGlobalScroll(e) {
     instances.forEach(inst => {
       if (!inst.visible) return;
+      const target = e && e.target;
+      if (inst.menuEl && (target === inst.menuEl ||
+          (target && target.nodeType && inst.menuEl.contains(target)))) return;
       if (inst.options.hideOnScroll) inst.hide();
       else if (inst.options.followScroll) inst._scheduleReposition();
     });
   }
 
-  function handleGlobalResize() {
+  function handleGlobalResize(e) {
     instances.forEach(inst => {
       if (!inst.visible) return;
+      if (inst.options.presentation === 'sheet' && e && e.target === window.visualViewport) {
+        inst._scheduleReposition();
+        return;
+      }
       if (inst.options.hideOnResize) inst.hide();
       else inst._scheduleReposition();
+    });
+  }
+
+  function handleVisualViewportChange(e) {
+    instances.forEach(inst => {
+      if (!inst.visible) return;
+      if (inst.options.presentation === 'sheet') inst._scheduleReposition();
+      else if (e.type === 'scroll') handleGlobalScroll(e);
+      else handleGlobalResize(e);
     });
   }
 
@@ -109,7 +205,7 @@
 
     if (['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight', 'Home', 'End', 'Enter', ' '].includes(e.key)) {
       activeInst._handleKeyboardNavigation(e);
-    } else {
+    } else if (!e.isComposing && e.keyCode !== 229 && !isComposing) {
       activeInst._handleTypeAhead(e);
     }
   }
@@ -124,6 +220,15 @@
         presentation: 'popover',
         backdrop: true,
         swipeToDismiss: true,
+        scrollLock: true,
+        inertBackground: true,
+        sheetLabel: '閉じる',
+        detents: ['content'],
+        defaultDetent: 'content',
+        onDetentChange: null,
+        dismissThreshold: 0.25,
+        dismissVelocity: 0.5,
+        dismissDirection: 'vertical',
         trigger: 'contextmenu',
         delegate: null,
         toggle: false,
@@ -160,8 +265,15 @@
         onHide: null,
         onSelect: null
       }, options);
+      this._validateDetents(this.options.detents);
       this.options.aria = Object.assign({ haspopup: 'menu', controls: null, expanded: true }, options.aria);
       this._placementExplicit = Object.prototype.hasOwnProperty.call(options, 'placement');
+      this._hideOnScrollExplicit = Object.prototype.hasOwnProperty.call(options, 'hideOnScroll');
+      this._hideOnResizeExplicit = Object.prototype.hasOwnProperty.call(options, 'hideOnResize');
+      if (this.options.presentation === 'sheet') {
+        if (!this._hideOnScrollExplicit) this.options.hideOnScroll = false;
+        if (!this._hideOnResizeExplicit) this.options.hideOnResize = false;
+      }
 
       this.targetEls = [];
       this.delegateRoot = null;
@@ -188,6 +300,14 @@
       this._rafId = null;
       this._rafIsTimeout = false;
       this._sheetCloseTimer = null;
+      this._closing = null;
+      this._closingToken = 0;
+      this._scrollLockAcquired = false;
+      this._inertRecords = [];
+      this._warnedSheetOptions = false;
+      this._appliedPopoverMaxHeight = null;
+      this._appliedPopoverOverflowY = null;
+      this.currentDetent = this.options.defaultDetent;
       this._showing = false;
       this._destroyed = false;
       this._typeAheadBuffer = '';
@@ -196,6 +316,11 @@
       this._onSheetPointerMove = this._onSheetPointerMove.bind(this);
       this._onSheetPointerUp = this._onSheetPointerUp.bind(this);
       this._onSheetPointerCancel = this._onSheetPointerCancel.bind(this);
+      this._onSheetAnimationDone = this._onSheetAnimationDone.bind(this);
+      this._onSheetAnimationCancel = this._onSheetAnimationCancel.bind(this);
+      this._onBackdropTransitionDone = this._onBackdropTransitionDone.bind(this);
+      this._onBackdropTransitionCancel = this._onBackdropTransitionCancel.bind(this);
+      this._onSheetFocusIn = this._onSheetFocusIn.bind(this);
 
       this._initTargets(target);
       this.triggerOrigin = this.targetEls[0] || null;
@@ -207,6 +332,11 @@
 
       instances.add(this);
       bindGlobalEvents();
+      this._warnIncompatibleSheetOptions(options);
+    }
+
+    static instancesCount() {
+      return instances.size;
     }
 
     static autoInit(root = typeof document !== 'undefined' ? document : null) {
@@ -301,7 +431,23 @@
     }
 
     _getRole() {
-      return this.options.role || (this.options.customContent ? 'dialog' : 'menu');
+      return this.options.role || (
+        this.options.presentation === 'sheet' && this.options.backdrop || this.options.customContent
+          ? 'dialog'
+          : 'menu'
+      );
+    }
+
+    _warnIncompatibleSheetOptions(options = {}) {
+      if (this._warnedSheetOptions || this.options.presentation !== 'sheet') return;
+      const hasConflict = this.options.anchor === 'element' ||
+        (this._placementExplicit && this.options.placement !== 'bottom-start') ||
+        this.options.arrow;
+      if (!hasConflict) return;
+      this._warnedSheetOptions = true;
+      if (typeof console !== 'undefined' && console.warn) {
+        console.warn('PopContext: anchor, placement, and arrow options are ignored by sheet presentation.');
+      }
     }
 
     _resolveDelegateTarget(target) {
@@ -334,6 +480,9 @@
       this.menuEl.setAttribute('aria-hidden', 'true');
       this.menuEl.setAttribute('tabindex', '-1');
       this.menuEl.hidden = Boolean(this.options.syncHidden);
+      this.menuEl.addEventListener('animationend', this._onSheetAnimationDone);
+      this.menuEl.addEventListener('animationcancel', this._onSheetAnimationCancel);
+      this.menuEl.addEventListener('focusin', this._onSheetFocusIn);
       this._updateMenuAttributes();
       this._renderContent();
       document.body.appendChild(this.menuEl);
@@ -350,14 +499,20 @@
         this.backdropEl.style.position = 'fixed';
         this.backdropEl.style.inset = '0';
         this.backdropEl.style.display = 'none';
+        this.backdropEl.addEventListener('transitionend', this._onBackdropTransitionDone);
+        this.backdropEl.addEventListener('transitioncancel', this._onBackdropTransitionCancel);
       } else if (!needsBackdrop && this.backdropEl) {
+        this.backdropEl.removeEventListener('transitionend', this._onBackdropTransitionDone);
+        this.backdropEl.removeEventListener('transitioncancel', this._onBackdropTransitionCancel);
         this.backdropEl.remove();
         this.backdropEl = null;
+        this._markClosingDone('backdrop');
       }
 
       if (this.backdropEl) {
         const zIndex = Number(this.options.zIndex);
-        this.backdropEl.style.zIndex = String(Number.isFinite(zIndex) ? zIndex - 1 : 999998);
+        this.backdropEl.style.zIndex = String(Number.isFinite(zIndex) ? Math.max(1, zIndex - 1) : 999998);
+        this.backdropEl.setAttribute('aria-hidden', 'true');
         if (this.menuEl.parentNode) this.menuEl.parentNode.insertBefore(this.backdropEl, this.menuEl);
         this._setPresentationVisibility(this.visible);
       }
@@ -367,9 +522,57 @@
       if (!this.backdropEl) return;
       const shown = visible && this.options.presentation === 'sheet' && this.options.backdrop;
       this.backdropEl.style.display = shown || closing ? 'block' : 'none';
-      this.backdropEl.setAttribute('aria-hidden', shown ? 'false' : 'true');
+      this.backdropEl.setAttribute('aria-hidden', 'true');
       this.backdropEl.classList.toggle('is-visible', shown);
       if (!this._sheetDrag) this.backdropEl.style.opacity = '';
+    }
+
+    _syncModalEffects() {
+      const activeModal = this.visible && this.options.presentation === 'sheet' && this.options.backdrop;
+      const shouldLock = activeModal && this.options.scrollLock;
+      const shouldInert = activeModal && this.options.inertBackground;
+      if (shouldLock && !this._scrollLockAcquired) {
+        acquireScrollLock();
+        this._scrollLockAcquired = true;
+      } else if (!shouldLock && this._scrollLockAcquired) {
+        releaseScrollLock();
+        this._scrollLockAcquired = false;
+      }
+
+      if (shouldInert) this._inertBackground();
+      else this._restoreBackground();
+    }
+
+    _inertBackground() {
+      if (!document.body || this._inertRecords.length) return;
+      Array.from(document.body.children).forEach(element => {
+        if (element === this.menuEl || element === this.backdropEl) return;
+        if ('inert' in element) {
+          if (element.inert) return;
+          this._inertRecords.push({ element, kind: 'inert', original: false });
+          element.inert = true;
+          return;
+        }
+        if (element.getAttribute('aria-hidden') === 'true') return;
+        this._inertRecords.push({
+          element,
+          kind: 'aria-hidden',
+          original: element.hasAttribute('aria-hidden') ? element.getAttribute('aria-hidden') : null
+        });
+        element.setAttribute('aria-hidden', 'true');
+      });
+    }
+
+    _restoreBackground() {
+      this._inertRecords.forEach(record => {
+        if (record.kind === 'inert') {
+          if (record.element.inert === true) record.element.inert = record.original;
+        } else if (record.element.getAttribute('aria-hidden') === 'true') {
+          if (record.original == null) record.element.removeAttribute('aria-hidden');
+          else record.element.setAttribute('aria-hidden', record.original);
+        }
+      });
+      this._inertRecords = [];
     }
 
     _updateMenuAttributes() {
@@ -381,7 +584,7 @@
       const classes = ['pop-context-menu', themeClass, layoutClass, showArrow ? 'has-arrow' : '', sheet ? 'pc-presentation-sheet' : '', this.options.className].filter(Boolean);
       this.menuEl.className = classes.join(' ');
       this.menuEl.setAttribute('role', this._getRole());
-      if (sheet && this.options.backdrop && this._getRole() === 'dialog') this.menuEl.setAttribute('aria-modal', 'true');
+      if (sheet && this.options.backdrop) this.menuEl.setAttribute('aria-modal', 'true');
       else this.menuEl.removeAttribute('aria-modal');
       if (this.options.ariaLabel) this.menuEl.setAttribute('aria-label', this.options.ariaLabel);
       else this.menuEl.removeAttribute('aria-label');
@@ -414,17 +617,22 @@
       });
       this.sheetHandleEl = null;
 
-      if (this.options.presentation === 'sheet' && this.options.swipeToDismiss) {
+      if (this.options.presentation === 'sheet') {
         this.sheetHandleEl = document.createElement('div');
-        this.sheetHandleEl.className = 'pc-sheet-handle';
-        this.sheetHandleEl.setAttribute('aria-hidden', 'true');
+        this.sheetHandleEl.className = `pc-sheet-handle${this.options.swipeToDismiss ? '' : ' is-close-only'}`;
+        this.sheetHandleEl.setAttribute('role', 'button');
+        this.sheetHandleEl.setAttribute('tabindex', '0');
+        this.sheetHandleEl.setAttribute('aria-label', this.options.sheetLabel || '閉じる');
         const handleBar = document.createElement('span');
         handleBar.className = 'pc-sheet-handle-bar';
+        handleBar.setAttribute('aria-hidden', 'true');
         this.sheetHandleEl.appendChild(handleBar);
-        this.sheetHandleEl.addEventListener('pointerdown', this._onSheetPointerDown);
-        this.sheetHandleEl.addEventListener('pointermove', this._onSheetPointerMove);
-        this.sheetHandleEl.addEventListener('pointerup', this._onSheetPointerUp);
-        this.sheetHandleEl.addEventListener('pointercancel', this._onSheetPointerCancel);
+        if (this.options.swipeToDismiss) {
+          this.sheetHandleEl.addEventListener('pointerdown', this._onSheetPointerDown);
+          this.sheetHandleEl.addEventListener('pointermove', this._onSheetPointerMove);
+          this.sheetHandleEl.addEventListener('pointerup', this._onSheetPointerUp);
+          this.sheetHandleEl.addEventListener('pointercancel', this._onSheetPointerCancel);
+        }
         this.menuEl.appendChild(this.sheetHandleEl);
       }
 
@@ -599,11 +807,11 @@
     }
 
     _syncTargetAttributes() {
-      new Set([...this.targetEls, ...this._managedTargets]).forEach(el => this._applyTargetAttributes(el));
+      this.targetEls.forEach(el => this._applyTargetAttributes(el));
     }
 
     _applyTargetAttributes(el) {
-      if (!el) return;
+      if (!el || (this.delegateRoot && !this.targetEls.includes(el))) return;
       this._managedTargets.add(el);
       if (this.options.aria) {
         if (this.options.aria.haspopup) this._recordAttribute(el, 'aria-haspopup', this.options.aria.haspopup);
@@ -784,6 +992,10 @@
         clearTimeout(this._sheetCloseTimer);
         this._sheetCloseTimer = null;
       }
+      if (this._closing) {
+        this._closing = null;
+        this._sheetCloseTimer = null;
+      }
       this.menuEl.classList.remove('is-closing');
       if (this.options.anchor === 'pointer' && typeof x === 'number' && typeof y === 'number') {
         this.lastPosition = { x, y };
@@ -802,14 +1014,25 @@
       if (!this.visible) return;
       this._setFocusedIndex(-1);
       this._focusInitial();
+      this._syncModalEffects();
       if (typeof this.options.onShow === 'function') {
         this.options.onShow.call(this, { x: this.lastPosition.x, y: this.lastPosition.y });
       }
     }
 
     _onSheetPointerDown(e) {
-      if (this.options.presentation !== 'sheet' || !this.options.swipeToDismiss || e.button !== 0) return;
-      this._sheetDrag = { pointerId: e.pointerId, startY: e.clientY };
+      if (this.options.presentation !== 'sheet' || !this.options.swipeToDismiss ||
+          (e.button != null && e.button !== 0)) return;
+      const now = e.timeStamp || Date.now();
+      this._sheetDrag = {
+        pointerId: e.pointerId,
+        startX: e.clientX || 0,
+        startY: e.clientY,
+        startTime: now,
+        lastX: e.clientX || 0,
+        lastY: e.clientY,
+        lastTime: now
+      };
       this.menuEl.classList.add('is-dragging');
       this.backdropEl && this.backdropEl.classList.add('is-dragging');
       if (e.currentTarget.setPointerCapture) e.currentTarget.setPointerCapture(e.pointerId);
@@ -818,6 +1041,12 @@
 
     _onSheetPointerMove(e) {
       if (!this._sheetDrag || e.pointerId !== this._sheetDrag.pointerId) return;
+      const moveTime = e.timeStamp || Date.now();
+      const moveElapsed = Math.max(1, moveTime - this._sheetDrag.lastTime);
+      this._sheetDrag.velocity = (e.clientY - this._sheetDrag.lastY) / moveElapsed;
+      this._sheetDrag.lastTime = moveTime;
+      this._sheetDrag.lastY = e.clientY;
+      this._sheetDrag.lastX = e.clientX || 0;
       const distance = Math.max(0, e.clientY - this._sheetDrag.startY);
       this.menuEl.style.transform = `translateY(${distance}px)`;
       if (this.backdropEl) {
@@ -828,10 +1057,40 @@
 
     _onSheetPointerUp(e) {
       if (!this._sheetDrag || e.pointerId !== this._sheetDrag.pointerId) return;
-      const distance = e.clientY - this._sheetDrag.startY;
+      const drag = this._sheetDrag;
+      const dx = (e.clientX || 0) - drag.startX;
+      const dy = e.clientY - drag.startY;
+      const endTime = e.timeStamp || Date.now();
+      const finalElapsed = endTime - drag.lastTime;
+      const velocity = finalElapsed > 0
+        ? (e.clientY - drag.lastY) / finalElapsed
+        : drag.velocity || 0;
       const height = this.menuEl.getBoundingClientRect().height || window.innerHeight;
       this._resetSheetDrag();
-      if (distance >= Math.max(72, height * 0.25)) this.hide({ restoreFocus: true });
+      if (this.options.dismissDirection === 'vertical' && Math.abs(dx) > Math.abs(dy)) return;
+      const threshold = Math.max(72, height * (Number(this.options.dismissThreshold) || 0.25));
+      const dismissByDistance = dy >= threshold;
+      const dismissByVelocity = dy >= 24 && velocity >= (Number(this.options.dismissVelocity) || 0.5);
+      const detents = this._getSortedDetents();
+      if (detents.length <= 1) {
+        if (dismissByDistance || dismissByVelocity) this.hide({ restoreFocus: true });
+        return;
+      }
+
+      const currentIndex = detents.findIndex(detent => detent.value === this.currentDetent);
+      const current = detents[Math.max(0, currentIndex)];
+      const targetHeight = current.height - dy;
+      const lowest = detents[0];
+      const distanceBelowLowest = lowest.height - targetHeight;
+      if ((currentIndex <= 0 || distanceBelowLowest >= threshold) &&
+          (dismissByDistance || dismissByVelocity)) {
+        this.hide({ restoreFocus: true });
+        return;
+      }
+      const nearest = detents.reduce((best, detent) =>
+        Math.abs(detent.height - targetHeight) < Math.abs(best.height - targetHeight) ? detent : best
+      );
+      this.setDetent(nearest.value);
     }
 
     _onSheetPointerCancel(e) {
@@ -852,6 +1111,79 @@
       if (this.backdropEl) {
         this.backdropEl.classList.remove('is-dragging');
         this.backdropEl.style.opacity = '';
+      }
+    }
+
+    _getDetents() {
+      return this._validateDetents(this.options.detents);
+    }
+
+    _validateDetents(values) {
+      if (!Array.isArray(values) || values.length === 0) {
+        throw new TypeError('PopContext: detents must be a non-empty array.');
+      }
+      const isValid = value => value === 'content' || value === 'half' || value === 'full' ||
+        (typeof value === 'number' && Number.isFinite(value) && value > 0);
+      if (values.some(value => !isValid(value))) {
+        const invalid = values.find(value => !isValid(value));
+        throw new TypeError(`PopContext: invalid sheet detent "${String(invalid)}".`);
+      }
+      return Array.from(new Set(values));
+    }
+
+    _getDetentHeight(detent) {
+      if (detent === 'content') return this.menuEl.scrollHeight || this.menuEl.getBoundingClientRect().height || 0;
+      const viewport = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+      if (detent === 'half') return viewport * 0.5;
+      if (detent === 'full') return viewport;
+      return viewport * detent / 100;
+    }
+
+    _getSortedDetents() {
+      return this._getDetents()
+        .map(value => ({ value, height: this._getDetentHeight(value) }))
+        .sort((a, b) => a.height - b.height);
+    }
+
+    _applyDetent() {
+      if (!this.menuEl || this.options.presentation !== 'sheet') return;
+      const detents = this._getDetents();
+      if (!detents.length) {
+        this.currentDetent = 'content';
+        this.menuEl.style.setProperty('--pc-sheet-height', 'auto');
+        return;
+      }
+      if (!detents.includes(this.currentDetent)) {
+        this.currentDetent = detents.includes(this.options.defaultDetent)
+          ? this.options.defaultDetent
+          : detents[0];
+      }
+      const height = this.currentDetent === 'content'
+        ? `${this.menuEl.scrollHeight || this.menuEl.getBoundingClientRect().height || 0}px`
+        : `${this._getDetentHeight(this.currentDetent)}px`;
+      this.menuEl.style.setProperty('--pc-sheet-height', height);
+    }
+
+    getDetent() {
+      return this.currentDetent;
+    }
+
+    setDetent(detent) {
+      if (!this._getDetents().includes(detent)) {
+        throw new RangeError(`PopContext: unsupported sheet detent "${detent}".`);
+      }
+      const previous = this.currentDetent;
+      this.currentDetent = detent;
+      this._applyDetent();
+      if (previous !== detent && typeof this.options.onDetentChange === 'function') {
+        this.options.onDetentChange.call(this, detent, this);
+      }
+    }
+
+    _onSheetFocusIn(e) {
+      if (this.options.presentation !== 'sheet' || !e.target || e.target === this.menuEl) return;
+      if (typeof e.target.scrollIntoView === 'function') {
+        e.target.scrollIntoView({ block: 'nearest' });
       }
     }
 
@@ -887,21 +1219,42 @@
     _reposition() {
       if (!this.menuEl || typeof window === 'undefined' || !this.visible) return;
       if (this.options.presentation === 'sheet') {
+        const viewport = window.visualViewport;
+        if (viewport) {
+          this.menuEl.style.setProperty('--pc-vv-height', `${viewport.height}px`);
+          this.menuEl.style.setProperty('--pc-vv-offset-top', `${viewport.offsetTop}px`);
+          this.menuEl.style.bottom = 'calc(100vh - var(--pc-vv-offset-top) - var(--pc-vv-height))';
+        } else {
+          this.menuEl.style.removeProperty('--pc-vv-height');
+          this.menuEl.style.removeProperty('--pc-vv-offset-top');
+          this.menuEl.style.bottom = '0px';
+        }
         this.menuEl.style.top = 'auto';
-        this.menuEl.style.bottom = '0px';
         this.menuEl.style.left = '0px';
         this.menuEl.style.right = '0px';
         this.menuEl.style.width = '100%';
-        this.menuEl.style.maxHeight = '';
+        this.menuEl.style.maxHeight = 'calc(var(--pc-vv-height, 100dvh) - env(safe-area-inset-top, 0px) - 16px)';
         this.menuEl.style.overflowY = '';
+        this._applyDetent();
         this.currentFlipState = { flipX: false, flipY: false };
         return;
       }
       this.menuEl.style.bottom = 'auto';
       this.menuEl.style.right = 'auto';
       this.menuEl.style.width = '';
-      this.menuEl.style.maxHeight = '';
-      this.menuEl.style.overflowY = '';
+      this.menuEl.style.height = '';
+      this.menuEl.style.removeProperty('--pc-vv-height');
+      this.menuEl.style.removeProperty('--pc-vv-offset-top');
+      this.menuEl.style.removeProperty('--pc-sheet-height');
+      if (this._appliedPopoverMaxHeight && this.menuEl.style.maxHeight === this._appliedPopoverMaxHeight) {
+        this.menuEl.style.maxHeight = '';
+      }
+      if (this._appliedPopoverOverflowY && this.menuEl.style.overflowY === this._appliedPopoverOverflowY) {
+        this.menuEl.style.overflowY = '';
+      }
+      this._appliedPopoverMaxHeight = null;
+      this._appliedPopoverOverflowY = null;
+      this.menuEl.classList.remove('pc-scrollable');
       if (!this._sheetDrag) this.menuEl.style.transform = '';
       const anchorRect = this._getAnchorRect();
       if (!anchorRect) {
@@ -917,17 +1270,25 @@
       }
 
       const padding = Math.max(0, Number(this.options.viewportPadding) || 0);
-      const rect = this.menuEl.getBoundingClientRect();
       const availableWidth = Math.max(0, boundary.right - boundary.left - padding * 2);
       const availableHeight = Math.max(0, boundary.bottom - boundary.top - padding * 2);
+      let rect = this.menuEl.getBoundingClientRect();
+      if (rect.height > availableHeight && !this.menuEl.style.maxHeight) {
+        this._appliedPopoverMaxHeight = `${availableHeight}px`;
+        this._appliedPopoverOverflowY = 'auto';
+        this.menuEl.style.maxHeight = this._appliedPopoverMaxHeight;
+        this.menuEl.style.overflowY = this._appliedPopoverOverflowY;
+        this.menuEl.classList.add('pc-scrollable');
+        rect = this.menuEl.getBoundingClientRect();
+      }
       let width = rect.width;
       let height = rect.height;
       const safe = this.menuEl.style.visibility;
       if (!width || !height) {
         this.menuEl.style.visibility = 'hidden';
         const measured = this.menuEl.getBoundingClientRect();
-        width = measured.width;
-        height = measured.height;
+        width = measured.width || width;
+        height = measured.height || height;
         this.menuEl.style.visibility = safe;
       }
 
@@ -1042,11 +1403,16 @@
 
     hide(options = {}) {
       if (!this.visible) return;
-      if (options.restoreFocus === true) this._restoreFocus();
       this._resetSheetDrag();
       const reduceMotion = typeof window !== 'undefined' && typeof window.matchMedia === 'function' &&
         window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       const animateSheet = this.options.presentation === 'sheet' && !reduceMotion;
+      const backdropWasVisible = Boolean(this.backdropEl && this.backdropEl.classList.contains('is-visible'));
+      this.visible = false;
+      this._syncModalEffects();
+      const restoreFocus = options.restoreFocus === true ||
+        (options.restoreFocus !== false && this.options.presentation === 'sheet' && this.options.backdrop);
+      if (restoreFocus) this._restoreFocus();
       if (this.menuEl) {
         if (animateSheet) {
           this.menuEl.classList.add('is-closing');
@@ -1059,19 +1425,36 @@
         this.menuEl.setAttribute('aria-hidden', 'true');
       }
       this._setPresentationVisibility(false, animateSheet);
-      this.visible = false;
       this.focusedIndex = -1;
       this._writeExpanded(false);
       this._writeOpenClass(false);
       this._cancelLongPress();
       this._clearTypeAhead();
       if (animateSheet) {
-        const closeTimer = setTimeout(() => {
-          if (this._sheetCloseTimer !== closeTimer) return;
+        const sheetDuration = this._readCssDuration(this.menuEl, '--pc-sheet-out-duration', 220);
+        const backdropDuration = this.backdropEl
+          ? this._readCssDuration(this.backdropEl, '--pc-backdrop-fade-duration', 250)
+          : 0;
+        const closing = {
+          token: ++this._closingToken,
+          sheetDone: sheetDuration <= 0,
+          backdropDone: !backdropWasVisible || !this.backdropEl || backdropDuration <= 0,
+          timer: null,
+          finished: false
+        };
+        this._closing = closing;
+        closing.timer = setTimeout(() => {
+          if (!this._closing || this._closing.token !== closing.token) return;
           this._sheetCloseTimer = null;
-          this._finishSheetClose();
-        }, 270);
-        this._sheetCloseTimer = closeTimer;
+          closing.sheetDone = true;
+          closing.backdropDone = true;
+          this._checkClosingComplete(closing.token);
+        }, Math.max(sheetDuration, backdropDuration) + 100);
+        this._sheetCloseTimer = closing.timer;
+        this._checkClosingComplete(closing.token);
+      } else if (this.options.presentation === 'sheet') {
+        this._closing = null;
+        this._finishSheetClose();
       }
       if (this._rafId != null) {
         if (this._rafIsTimeout) clearTimeout(this._rafId);
@@ -1081,8 +1464,59 @@
       if (typeof this.options.onHide === 'function') this.options.onHide.call(this);
     }
 
-    _finishSheetClose() {
-      if (this.visible || !this.menuEl) return;
+    _readCssDuration(element, property, fallback) {
+      if (!element || typeof window === 'undefined' || !window.getComputedStyle) return fallback;
+      const style = window.getComputedStyle(element);
+      const value = style && style.getPropertyValue ? style.getPropertyValue(property) : '';
+      const match = String(value).trim().match(/^(-?(?:\d+(?:\.\d*)?|\.\d+))(ms|s)$/);
+      if (!match) return fallback;
+      const amount = Number(match[1]);
+      return match[2] === 's' ? amount * 1000 : amount;
+    }
+
+    _onSheetAnimationDone(e) {
+      if (e.target !== this.menuEl || e.animationName !== 'pc-sheet-out' || !this._closing) return;
+      this._markClosingDone('sheet', this._closing.token);
+    }
+
+    _onSheetAnimationCancel(e) {
+      this._onSheetAnimationDone(e);
+    }
+
+    _onBackdropTransitionDone(e) {
+      if (e.target !== this.backdropEl || e.propertyName !== 'opacity' || !this._closing) return;
+      this._markClosingDone('backdrop', this._closing.token);
+    }
+
+    _onBackdropTransitionCancel(e) {
+      this._onBackdropTransitionDone(e);
+    }
+
+    _markClosingDone(which, token) {
+      if (!this._closing || this._closing.token !== token) return;
+      if (which === 'sheet') this._closing.sheetDone = true;
+      else this._closing.backdropDone = true;
+      this._checkClosingComplete(token);
+    }
+
+    _checkClosingComplete(token) {
+      const closing = this._closing;
+      if (!closing || closing.token !== token || closing.finished ||
+          !closing.sheetDone || !closing.backdropDone) return;
+      this._finishSheetClose(token);
+    }
+
+    _finishSheetClose(token) {
+      if (!this.menuEl || (token != null && (!this._closing || this._closing.token !== token))) return;
+      if (this._closing && this._closing.finished) return;
+      const closing = this._closing;
+      if (closing) {
+        closing.finished = true;
+        if (closing.timer != null) clearTimeout(closing.timer);
+        this._closing = null;
+        this._sheetCloseTimer = null;
+      }
+      if (this.visible) return;
       this.menuEl.style.display = 'none';
       this.menuEl.classList.remove('is-closing');
       if (this.options.syncHidden) this.menuEl.hidden = true;
@@ -1138,9 +1572,15 @@
       const safePatch = Object.assign({}, patch);
       delete safePatch.items;
       delete safePatch.customContent;
+      if (Object.prototype.hasOwnProperty.call(safePatch, 'detents')) this._validateDetents(safePatch.detents);
       if (Object.prototype.hasOwnProperty.call(safePatch, 'placement')) this._placementExplicit = true;
+      if (Object.prototype.hasOwnProperty.call(safePatch, 'hideOnScroll')) this._hideOnScrollExplicit = true;
+      if (Object.prototype.hasOwnProperty.call(safePatch, 'hideOnResize')) this._hideOnResizeExplicit = true;
       if (safePatch.aria) safePatch.aria = Object.assign({}, this.options.aria, safePatch.aria);
       Object.assign(this.options, safePatch);
+      if (!this._hideOnScrollExplicit) this.options.hideOnScroll = this.options.presentation !== 'sheet';
+      if (!this._hideOnResizeExplicit) this.options.hideOnResize = this.options.presentation !== 'sheet';
+      this._warnIncompatibleSheetOptions(safePatch);
       if (oldPresentation !== this.options.presentation || oldSwipeToDismiss !== this.options.swipeToDismiss ||
           oldBackdrop !== this.options.backdrop) this._resetSheetDrag();
       this._syncPresentationElements();
@@ -1169,6 +1609,8 @@
       this._syncTargetAttributes();
       this._updateMenuAttributes();
       this._renderContent();
+      this._applyDetent();
+      this._syncModalEffects();
       if (this.visible) this._reposition();
     }
 
@@ -1227,6 +1669,35 @@
 
     _handleTabNavigation(e) {
       const role = this._getRole();
+      const modalSheet = this.options.presentation === 'sheet' && this.options.backdrop;
+      if (modalSheet) {
+        let focusable = this._getFocusableElements(this.menuEl);
+        const candidates = new Set([...focusable, ...this._getEnabledItems()]);
+        if (this.sheetHandleEl) candidates.add(this.sheetHandleEl);
+        focusable = [];
+        const visit = element => {
+          element.childNodes.forEach(child => {
+            if (candidates.has(child)) focusable.push(child);
+            visit(child);
+          });
+        };
+        visit(this.menuEl);
+        if (!focusable.length) {
+          e.preventDefault();
+          this.menuEl.focus();
+          return;
+        }
+        const activeIndex = focusable.indexOf(document.activeElement);
+        e.preventDefault();
+        if (activeIndex === -1) {
+          (e.shiftKey ? focusable[focusable.length - 1] : focusable[0]).focus();
+        } else {
+          const direction = e.shiftKey ? -1 : 1;
+          const nextIndex = (activeIndex + direction + focusable.length) % focusable.length;
+          focusable[nextIndex].focus();
+        }
+        return;
+      }
       if (role === 'menu') {
         e.preventDefault();
         this.hide({ restoreFocus: true });
@@ -1269,13 +1740,20 @@
     }
 
     _handleKeyboardNavigation(e) {
+      const target = e.target && e.target.nodeType === 1 ? e.target : e.target && e.target.parentElement;
+      if (target === this.sheetHandleEl && (e.key === 'Enter' || e.key === ' ')) {
+        e.preventDefault();
+        this.hide({ restoreFocus: true });
+        return;
+      }
+      if (isEditableTarget(target)) return;
+      if ((e.isComposing || e.keyCode === 229 || isComposing) && ['Enter', ' '].includes(e.key)) return;
       if (!this.menuEl || this.options.customContent || this._getRole() === 'dialog') return;
       const items = this._getEnabledItems();
       if (items.length === 0) return;
       const navigable = ['ArrowDown', 'ArrowUp', 'Home', 'End', 'Enter', ' '].includes(e.key) ||
         (this.options.layout === 'grid' && ['ArrowLeft', 'ArrowRight'].includes(e.key));
       if (!navigable) return;
-      const target = e.target && e.target.nodeType === 1 ? e.target : e.target && e.target.parentElement;
       const owner = target && target.closest('.pc-item');
       if (owner && this.options.items[Number(owner.dataset.index)] && this.options.items[Number(owner.dataset.index)].element) return;
       e.preventDefault();
@@ -1296,9 +1774,10 @@
 
     _handleTypeAhead(e) {
       if (!this.visible || this._getRole() !== 'menu' || e.ctrlKey || e.metaKey || e.altKey ||
+          e.isComposing || e.keyCode === 229 || isComposing ||
           typeof e.key !== 'string' || Array.from(e.key).length !== 1 || e.key === ' ') return;
       const target = e.target && e.target.nodeType === 1 ? e.target : e.target && e.target.parentElement;
-      if (target && target.closest('input, textarea, select, [contenteditable="true"]')) return;
+      if (isEditableTarget(target)) return;
 
       const character = e.key.toLocaleLowerCase();
       if (this._typeAheadBuffer && this._typeAheadBuffer.split('').every(value => value === character)) {
@@ -1345,6 +1824,7 @@
       if (this._destroyed) return;
       this._destroyed = true;
       this.hide({ restoreFocus: false });
+      this._closing = null;
       if (this._sheetCloseTimer != null) {
         clearTimeout(this._sheetCloseTimer);
         this._sheetCloseTimer = null;
@@ -1356,10 +1836,21 @@
         if (this._rafIsTimeout) clearTimeout(this._rafId);
         else if (typeof cancelAnimationFrame === 'function') cancelAnimationFrame(this._rafId);
       }
+      this._syncModalEffects();
+      this._restoreBackground();
       this._restoreTargetState();
       instances.delete(this);
       unbindGlobalEvents();
-      if (this.backdropEl && this.backdropEl.parentNode) this.backdropEl.parentNode.removeChild(this.backdropEl);
+      if (this.menuEl) {
+        this.menuEl.removeEventListener('animationend', this._onSheetAnimationDone);
+        this.menuEl.removeEventListener('animationcancel', this._onSheetAnimationCancel);
+        this.menuEl.removeEventListener('focusin', this._onSheetFocusIn);
+      }
+      if (this.backdropEl) {
+        this.backdropEl.removeEventListener('transitionend', this._onBackdropTransitionDone);
+        this.backdropEl.removeEventListener('transitioncancel', this._onBackdropTransitionCancel);
+        if (this.backdropEl.parentNode) this.backdropEl.parentNode.removeChild(this.backdropEl);
+      }
       if (this.menuEl && this.menuEl.parentNode) this.menuEl.parentNode.removeChild(this.menuEl);
       this.menuEl = null;
       this.arrowEl = null;

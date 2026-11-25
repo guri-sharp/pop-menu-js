@@ -260,6 +260,7 @@
 
     .pc-sheet-demo-content {
       padding: 8px 18px 22px;
+      padding-right: max(16px, env(safe-area-inset-right, 0px));
     }
 
     .pc-sheet-demo-header {
@@ -267,6 +268,7 @@
       align-items: center;
       gap: 12px;
       margin: 2px 0 8px;
+      padding-right: 56px;
     }
 
     .pc-sheet-demo-title-icon {
@@ -299,19 +301,44 @@
 
     .pc-sheet-demo-close {
       display: grid;
-      width: 36px;
-      height: 36px;
+      width: 44px;
+      height: 44px;
+      margin-top: -8px;
+      margin-left: auto;
+      margin-bottom: -44px;
+      padding: 0;
       place-items: center;
       flex: 0 0 auto;
       color: #64748b;
-      background: #f1f5f9;
+      background: transparent;
       border: 0;
       border-radius: 50%;
       cursor: pointer;
     }
 
+    .pc-sheet-demo-close::before {
+      position: absolute;
+      top: 4px;
+      right: 0;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: #f1f5f9;
+      content: "";
+      pointer-events: none;
+    }
+
+    .pc-sheet-demo-close i {
+      position: relative;
+      left: 4px;
+      z-index: 1;
+    }
+
     .pc-sheet-demo-close:hover {
       color: #0f172a;
+    }
+
+    .pc-sheet-demo-close:hover::before {
       background: #e2e8f0;
     }
 
@@ -597,18 +624,18 @@
       <div data-pop-item><span data-pop-label>削除</span></div>
     </template>
 
-    <h2>v2.8.0 の追加機能</h2>
+    <h2>v2.9.0 の追加機能</h2>
     <div class="demo-grid">
       <div class="card pc-sheet-demo-card">
         <div class="pc-sheet-demo-card-heading">
           <span class="pc-sheet-demo-card-icon" aria-hidden="true"><i class="fa-solid fa-arrow-up-from-bracket"></i></span>
           <div>
             <h3>ボトムシート</h3>
-            <p>下から現れる、アプリ風の共有メニューです。</p>
+            <p>モーダル操作、デテント、キーボード操作に対応した共有シートです。</p>
           </div>
         </div>
         <button class="btn" id="demo-bottom-sheet"><i class="fa-solid fa-share-nodes" aria-hidden="true"></i>共有メニューを開く</button>
-        <p style="margin-top: 12px;">背景をタップするか、ハンドルを下へスワイプして閉じます。</p>
+        <p style="margin-top: 12px;">背景タップ、下スワイプ、またはハンドルで Enter / Space を押して閉じます。</p>
       </div>
     </div>
 
@@ -877,18 +904,20 @@
       presentation: 'sheet',
       backdrop: true,
       swipeToDismiss: true,
+      detents: ['half', 'full'],
+      defaultDetent: 'half',
       ariaLabel: '共有メニュー',
       customContent(container) {
         const content = document.createElement('section');
         content.className = 'pc-sheet-demo-content';
         content.innerHTML = `
+          <button class="pc-sheet-demo-close pc-sheet-sticky" type="button" aria-label="閉じる"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
           <div class="pc-sheet-demo-header">
             <span class="pc-sheet-demo-title-icon" aria-hidden="true"><i class="fa-solid fa-arrow-up-from-bracket"></i></span>
             <div class="pc-sheet-demo-title">
               <span class="pc-sheet-demo-eyebrow">SHARE</span>
               <h3>このページを共有</h3>
             </div>
-            <button class="pc-sheet-demo-close" type="button" aria-label="閉じる"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
           </div>
           <p class="pc-sheet-demo-description">共有方法を選択してください。</p>
           <div class="pc-sheet-demo-link">
