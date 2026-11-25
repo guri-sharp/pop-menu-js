@@ -1,5 +1,5 @@
 /* ==========================================================================
-   PopContext - Base Stylesheet v2.4.0
+   PopContext - Base Stylesheet v2.5.0
    ========================================================================== */
 
 .pop-context-menu {
@@ -63,16 +63,30 @@
 
 .pop-context-menu.has-arrow.pc-arrow-top .pc-arrow {
   top: -7px;
-  left: 20px;
+  left: var(--pc-arrow-offset, 20px);
   border-right: none;
   border-bottom: none;
 }
 
 .pop-context-menu.has-arrow.pc-arrow-bottom .pc-arrow {
   bottom: -7px;
-  left: 20px;
+  left: var(--pc-arrow-offset, 20px);
   border-left: none;
   border-top: none;
+}
+
+.pop-context-menu.has-arrow.pc-arrow-left .pc-arrow {
+  left: -7px;
+  top: var(--pc-arrow-offset, 20px);
+  border-right: none;
+  border-top: none;
+}
+
+.pop-context-menu.has-arrow.pc-arrow-right .pc-arrow {
+  right: -7px;
+  top: var(--pc-arrow-offset, 20px);
+  border-left: none;
+  border-bottom: none;
 }
 
 /* ダークテーマ */
@@ -245,4 +259,21 @@
   object-fit: contain;
   display: block;
   pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pop-context-menu,
+  .pop-context-menu *,
+  .pop-context-menu *::before,
+  .pop-context-menu *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+:dir(rtl) .pop-context-menu.pc-layout-list .pc-shortcut {
+  margin-left: 0;
+  margin-right: auto;
 }

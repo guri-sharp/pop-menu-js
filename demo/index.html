@@ -198,6 +198,14 @@
       margin-right: 8px;
     }
 
+    .demo-none-theme {
+      --pc-bg: #172554;
+      --pc-border: #1d4ed8;
+      --pc-text: #eff6ff;
+      --pc-hover-bg: #1e40af;
+      --pc-shadow: 0 8px 24px rgba(30, 64, 175, 0.3);
+    }
+
     .log-tag {
       color: #a855f7;
       font-weight: bold;
@@ -255,6 +263,26 @@
       <div class="card interactive" id="demo-custom-arrow">
         <h3><i class="fa-solid fa-comment-dots"></i> 7. カスタム枠 ＆ 吹き出し</h3>
         <p>クリックで吹き出し（尻尾）付きカスタム枠を表示</p>
+      </div>
+    </div>
+
+    <h2>v2.5.0 の追加機能</h2>
+    <div class="demo-grid">
+      <div class="card">
+        <h3>要素アンカーとトグル</h3>
+        <p style="margin-bottom: 12px;">同じボタンを押して開閉。画面端では自動反転します。</p>
+        <button class="btn" id="demo-toggle">配置メニュー</button>
+      </div>
+      <div class="card">
+        <h3>手動制御</h3>
+        <p style="margin-bottom: 12px;">1 インスタンスを複数のアンカーで共有します。</p>
+        <button class="btn" id="manual-a">対象 A</button>
+        <button class="btn" id="manual-b">対象 B</button>
+      </div>
+      <div class="card">
+        <h3>既定動作を維持するリンク</h3>
+        <p style="margin-bottom: 12px;">クリックでメニューを開きつつ、リンクも動作します。</p>
+        <a href="#link-trigger" id="demo-link">リンクトリガー</a>
       </div>
     </div>
 
@@ -389,6 +417,43 @@
           <div style="font-size: 11px; color: #64748b; text-align: center;">任意HTMLを枠内に埋め込み可能</div>
         </div>
       `
+    });
+
+    const placementMenu = new PopContext('#demo-toggle', {
+      trigger: 'click',
+      anchor: 'element',
+      placement: 'bottom-start',
+      toggle: true,
+      openClass: 'menu-open',
+      items: [
+        { label: '編集', onClick: () => log('PLACEMENT', '編集を選択') },
+        { label: '削除', danger: true, onClick: () => log('PLACEMENT', '削除を選択') }
+      ]
+    });
+
+    const manualMenu = new PopContext('#manual-a', {
+      trigger: 'manual',
+      anchor: 'element',
+      placement: 'bottom-start',
+      theme: 'none',
+      className: 'demo-none-theme',
+      items: [{ label: '共有メニュー', onClick: () => log('MANUAL', '項目を選択') }]
+    });
+    document.getElementById('manual-a').addEventListener('click', () => {
+      manualMenu.setTarget(document.getElementById('manual-a'));
+      manualMenu.show();
+    });
+    document.getElementById('manual-b').addEventListener('click', () => {
+      manualMenu.setTarget(document.getElementById('manual-b'));
+      manualMenu.show();
+    });
+
+    new PopContext('#demo-link', {
+      trigger: 'click',
+      preventDefaultTrigger: false,
+      anchor: 'element',
+      placement: 'bottom-start',
+      items: [{ label: 'リンクの既定動作は抑止されません' }]
     });
   </script>
 </body>

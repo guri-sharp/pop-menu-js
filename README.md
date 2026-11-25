@@ -77,46 +77,179 @@ new PopContext('#color-btn', {
 | `items` | `Array<Object>` | `[]` | メニュー項目の配列 |
 | `layout` | `'list'` \| `'grid'` | `'list'` | 表示レイアウト |
 | `columns` | `number` | `3` | グリッドレイアウト時の列数 |
-| `trigger` | `'contextmenu'` \| `'click'` \| `'longpress'` | `'contextmenu'` | 起動トリガー |
+| `trigger` | `'contextmenu'` \| `'click'` \| `'longpress'` \| `'manual'` | `'contextmenu'` | 起動トリガー |
 | `arrow` | `boolean` | `false` | 吹き出しの尻尾（矢印）を表示するか |
 | `customContent` | `string` \| `HTMLElement` \| `Function` | `null` | メニュー内を自由なHTMLや要素で置き換えるカスタム枠 |
-| `theme` | `'default'` \| `'dark'` | `'default'` | カラーテーマ |
+| `theme` | `'default'` \| `'dark'` \| `'none'` | `'default'` | カラーテーマ |
 | `autoFlip` | `boolean` | `true` | 画面端での自動位置反転補正 |
+| `offset` | `{ x: number, y: number }` | `{ x: 0, y: 0 }` | 配置位置の補正 |
+| `anchor` | `'pointer'` \| `'element'` | `'pointer'` | 座標またはトリガー要素を基準に配置 |
+| `placement` | `string` | `'bottom-start'` | 配置方向（例: `bottom-start`, `top-end`, `right-start`, `auto`） |
+| `viewportPadding` | `number` | `8` | 境界から確保する最小余白（px） |
+| `boundary` | `Element` \| `null` | `null` | 配置境界。省略時は表示領域 |
+| `toggle` | `boolean` | `false` | 同じトリガーを再操作したときに閉じる |
+| `preventDefaultTrigger` | `boolean` | `true` | click トリガーの既定動作を抑止 |
+| `followScroll` / `followResize` | `boolean` | `false` | `hideOnScroll` / `hideOnResize` を `false` にした場合に追従 |
+| `hideOnScroll` / `hideOnResize` | `boolean` | `true` | スクロール／リサイズ時に閉じる（追従より優先） |
+| `closeOnSelect` / `closeOnOutsideClick` / `closeOnEscape` | `boolean` | `true` | 各操作時にメニューを閉じる |
+| `openClass` | `string` | `''` | 表示中にターゲットへ付けるクラス |
+| `syncHidden` | `boolean` | `false` | `menuEl.hidden` を表示状態に同期 |
+| `zIndex` | `number` | `999999` | メニューの z-index |
+| `arrowOffset` | `number` \| `null` | `null` | 矢印の水平位置（px） |
+| `aria` | `object` | `{ haspopup: 'menu', controls: null, expanded: true }` | トリガーに付与する ARIA 属性を制御 |
+| `ariaLabel` | `string` | `''` | メニューの `aria-label` |
+| `onBeforeShow` | `Function` \| `null` | `null` | 表示直前に呼び出すフック |
+
+`trigger` には `'manual'` も指定できます。手動トリガーでは要素イベントを登録せず、`show()` / `hide()` で制御します。`anchor: 'element'` と組み合わせる場合は `setTarget(element)` で表示基準を切り替えられます。
+
+```javascript
+const menu = new PopContext('#actions', {
+  trigger: 'manual',
+  anchor: 'element',
+  placement: 'bottom-start',
+  items: [{ label: '編集', onClick: () => {} }]
+});
+menu.setTarget(document.querySelector('#row-1'));
+menu.show();
+```
+
+### インスタンスメソッド
+
+| メソッド | 説明 |
+| :--- | :--- |
+| `show(x, y)` / `hide()` | 表示・非表示。既定の pointer 配置では `show(x, y)` で座標を指定 |
+| `toggle()` / `isVisible()` | 表示状態の切り替え・確認 |
+| `setTarget(element)` | トリガー／アンカー要素を差し替え |
+| `setItems(items)` / `updateItems(items)` | 項目を更新。`updateItems` は互換用エイリアス |
+| `setCustomContent(content)` | カスタム内容を更新。`null` で `items` 表示に戻す |
+| `setOptions(patch)` | オプションを部分更新（`items` と `customContent` は専用メソッドを使用） |
+| `reposition()` | 現在のアンカーに合わせて再配置 |
+| `destroy()` | リスナー、DOM、ライブラリが付与した属性を解放・復元 |
+
+`setItems()` は `customContent` を変更しません。カスタム内容と項目表示の切り替えは `setCustomContent()` で行ってください。`theme: 'none'` ではテーマクラスを付けず、`.pop-context-menu` 上の `--pc-*` CSS 変数を利用できます。`html` の項目スキーマはこのリリースでは未対応です。
 
 ---
 
 # PopContext - English
 
-Lightweight, accessible, multi-trigger custom context menu & popup library in vanilla JavaScript.
+PopContext is a lightweight, dependency-free JavaScript library for context menus and popups. It supports pointer, element, and manually controlled anchors, with keyboard interaction and ARIA state management.
 
-Supports right-click, left-click, long-press triggers, **speech bubble arrows**, **custom container frames (`customContent`)**, auto-flipping position correction, and full keyboard navigation.
+Right-click, click, and long-press triggers are supported, along with custom content, optional arrows, automatic placement adjustments, and reusable menu instances.
 
 ---
 
 ## ✨ Features
 
-- 💬 **Speech Bubble Arrow**: Enable `arrow: true` to show a triangle/tail pointing to the trigger target.
-- 📦 **Custom Content Container**: Render custom HTML or external pickers inside the popup.
-- 🚀 **Multi-Trigger**: Supports `contextmenu` (right-click), `click`, and `longpress` (mobile).
-- 📐 **Auto-Flip**: Automatically flips and clamps position when hitting screen edges.
-- ♿ **Accessible**: WAI-ARIA compliant with keyboard navigation (`Arrow keys`, `Escape`, `Enter`).
+- **Flexible triggers:** Use `contextmenu`, `click`, `longpress`, or `manual`.
+- **Element positioning:** Place a menu relative to its trigger with `anchor` and `placement`; menus can flip or clamp at the viewport edge.
+- **Custom content and layouts:** Render a list, grid, or custom content such as a form or picker.
+- **Reusable controls:** Retarget one instance with `setTarget()`, and update its items or options without recreating it.
+- **Accessibility:** Synchronize trigger ARIA attributes, navigate menu items with the keyboard, and restore trigger attributes on `destroy()`.
+- **No runtime dependencies:** Use the library directly from its JavaScript and CSS files.
 
 ---
+
+## 📦 Installation
+
+```html
+<link rel="stylesheet" href="pop-context.css">
+<script src="pop-context.js"></script>
+```
 
 ## 🚀 Quick Start
 
 ```javascript
 new PopContext('#target', {
   trigger: 'click',
-  arrow: true,
-  layout: 'grid',
-  columns: 5,
   items: [
-    { icon: '👍', onClick: () => console.log('Liked!') },
-    { icon: '❤️', onClick: () => console.log('Hearted!') }
+    { label: 'Edit', onClick: () => console.log('Edit') },
+    { label: 'Delete', danger: true, onClick: () => console.log('Delete') }
   ]
 });
 ```
+
+## 🎯 Element Anchors and Placement
+
+The default `anchor: 'pointer'` preserves coordinate-based positioning. Use `anchor: 'element'` to position the popup relative to its trigger:
+
+```javascript
+new PopContext('#actions', {
+  trigger: 'click',
+  anchor: 'element',
+  placement: 'bottom-start',
+  offset: { x: 0, y: 8 },
+  toggle: true,
+  items: [{ label: 'Edit', onClick: () => console.log('Edit') }]
+});
+```
+
+Supported placements include `top`, `bottom`, `left`, and `right`, with `-start` or `-end` alignment (for example, `bottom-start` or `right-end`). Use `placement: 'auto'` to choose the side with the most available space. `boundary` can be set to an element; otherwise, the viewport is used.
+
+## 🧩 Manual Control
+
+With `trigger: 'manual'`, PopContext does not register trigger event listeners. Open and close the menu from your own code:
+
+```javascript
+const menu = new PopContext('#actions', {
+  trigger: 'manual',
+  anchor: 'element',
+  placement: 'bottom-start',
+  items: [{ label: 'Edit', onClick: () => console.log('Edit') }]
+});
+
+menu.setTarget(document.querySelector('#row-1'));
+menu.show();
+```
+
+## 📖 API Reference
+
+### Options
+
+| Option | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `items` | `Array<Object>` | `[]` | Menu item definitions. |
+| `layout` | `'list'` \| `'grid'` | `'list'` | Item layout. |
+| `columns` | `number` | `3` | Number of columns for a grid layout. |
+| `trigger` | `'contextmenu'` \| `'click'` \| `'longpress'` \| `'manual'` | `'contextmenu'` | How the menu is opened. |
+| `longPressDuration` | `number` | `500` | Hold duration in milliseconds for the `longpress` trigger. |
+| `customContent` | `string` \| `HTMLElement` \| `Function` \| `null` | `null` | Custom content rendered inside the popup. Pass only trusted HTML strings. |
+| `anchor` | `'pointer'` \| `'element'` | `'pointer'` | Position relative to pointer coordinates or the trigger element. |
+| `placement` | `string` | `'bottom-start'` | Preferred side and alignment, or `'auto'`. |
+| `offset` | `{ x: number, y: number }` | `{ x: 0, y: 0 }` | Position adjustment in pixels. |
+| `autoFlip` | `boolean` | `true` | Flip to the opposite side when there is not enough space. |
+| `viewportPadding` | `number` | `8` | Minimum gap from the positioning boundary, in pixels. |
+| `boundary` | `Element` \| `null` | `null` | Positioning boundary. Defaults to the viewport. |
+| `toggle` | `boolean` | `false` | Close the menu when its open trigger is activated again. |
+| `preventDefaultTrigger` | `boolean` | `true` | Prevent the default action for a `click` trigger. `contextmenu` is always prevented. |
+| `hideOnScroll` / `hideOnResize` | `boolean` | `true` | Close the menu on scroll or resize. These take precedence over repositioning. |
+| `followScroll` / `followResize` | `boolean` | `false` | Reposition while scrolling or resizing when the corresponding hide option is disabled. |
+| `openClass` | `string` | `''` | Class added to the active trigger while the menu is open. |
+| `syncHidden` | `boolean` | `false` | Synchronize `menuEl.hidden` with the menu visibility. |
+| `closeOnSelect` / `closeOnOutsideClick` / `closeOnEscape` | `boolean` | `true` | Close the menu for the corresponding interaction. |
+| `theme` | `'default'` \| `'dark'` \| `'none'` | `'default'` | Visual theme. `'none'` omits the theme class. |
+| `className` | `string` | `''` | Additional class name for the popup. |
+| `arrow` | `boolean` | `false` | Show the optional arrow. |
+| `arrowOffset` | `number` \| `null` | `null` | Arrow position in pixels; `null` centers it on the anchor. |
+| `zIndex` | `number` | `999999` | Popup stacking order. |
+| `aria` | `object` | `{ haspopup: 'menu', controls: null, expanded: true }` | Configure ARIA attributes managed on the trigger. Existing `aria-controls` values are preserved. |
+| `ariaLabel` | `string` | `''` | Accessible label applied to the popup. |
+| `onBeforeShow` | `Function` \| `null` | `null` | Called immediately before the menu opens. |
+| `onShow` / `onHide` / `onSelect` | `Function` \| `null` | `null` | Lifecycle and item-selection callbacks. |
+
+### Instance Methods
+
+| Method | Description |
+| :--- | :--- |
+| `show(x, y)` / `hide()` | Open or close the menu. In the default pointer mode, pass coordinates to `show(x, y)`. |
+| `toggle()` / `isVisible()` | Toggle the menu or check whether it is open. |
+| `setTarget(element)` | Replace the trigger or element anchor. |
+| `setItems(items)` / `updateItems(items)` | Replace the items. `updateItems()` remains as a compatibility alias. |
+| `setCustomContent(content)` | Replace custom content; pass `null` to return to the item list. |
+| `setOptions(patch)` | Shallow-merge option updates. Use the dedicated methods to update `items` or `customContent`. |
+| `reposition()` | Recalculate the current position. |
+| `destroy()` | Remove the popup and listeners, and restore attributes managed by the instance. Safe to call more than once. |
+
+`setItems()` does not clear or replace `customContent`. Use `setCustomContent()` to switch between custom content and the item list. With `theme: 'none'`, customize the popup using the `--pc-*` CSS variables defined on `.pop-context-menu`.
 
 ---
 
