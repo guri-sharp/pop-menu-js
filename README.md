@@ -2,6 +2,8 @@
 
 [日本語](#popcontext---日本語) | [English](#popcontext---english)
 
+[デモ](https://guri-sharp.github.io/pop-context/demo/) | [Ko-fi で支援](https://ko-fi.com/guri01)
+
 ---
 
 ## PopContext - 日本語
