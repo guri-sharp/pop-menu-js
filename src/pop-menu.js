@@ -1230,7 +1230,7 @@
         if (viewport) {
           this.menuEl.style.setProperty('--pm-vv-height', `${viewport.height}px`);
           this.menuEl.style.setProperty('--pm-vv-offset-top', `${viewport.offsetTop}px`);
-          this.menuEl.style.bottom = 'calc(100vh - var(--pm-vv-offset-top) - var(--pm-vv-height))';
+          this.menuEl.style.bottom = 'calc(100% - var(--pm-vv-offset-top) - var(--pm-vv-height))';
         } else {
           this.menuEl.style.removeProperty('--pm-vv-height');
           this.menuEl.style.removeProperty('--pm-vv-offset-top');
