@@ -1,5 +1,5 @@
 /**
- * PopMenu JS v3.1.2
+ * PopMenu JS v3.2.0
  * Lightweight, accessible, multi-trigger custom context menu with element positioning.
  */
 (function (global, factory) {
@@ -218,6 +218,8 @@
         layout: 'list',
         columns: 3,
         presentation: 'popover',
+        side: 'left',
+        drawerWidth: null,
         backdrop: true,
         swipeToDismiss: true,
         scrollLock: true,
@@ -266,11 +268,12 @@
         onSelect: null
       }, options);
       this._validateDetents(this.options.detents);
+      this._validateSide(this.options.side);
       this.options.aria = Object.assign({ haspopup: 'menu', controls: null, expanded: true }, options.aria);
       this._placementExplicit = Object.prototype.hasOwnProperty.call(options, 'placement');
       this._hideOnScrollExplicit = Object.prototype.hasOwnProperty.call(options, 'hideOnScroll');
       this._hideOnResizeExplicit = Object.prototype.hasOwnProperty.call(options, 'hideOnResize');
-      if (this.options.presentation === 'sheet') {
+      if (this._isPanelPresentation()) {
         if (!this._hideOnScrollExplicit) this.options.hideOnScroll = false;
         if (!this._hideOnResizeExplicit) this.options.hideOnResize = false;
       }
@@ -305,6 +308,7 @@
       this._scrollLockAcquired = false;
       this._inertRecords = [];
       this._warnedSheetOptions = false;
+      this._suppressClickUntil = 0;
       this._appliedPopoverMaxHeight = null;
       this._appliedPopoverOverflowY = null;
       this.currentDetent = this.options.defaultDetent;
@@ -321,6 +325,7 @@
       this._onBackdropTransitionDone = this._onBackdropTransitionDone.bind(this);
       this._onBackdropTransitionCancel = this._onBackdropTransitionCancel.bind(this);
       this._onSheetFocusIn = this._onSheetFocusIn.bind(this);
+      this._onPanelClickCapture = this._onPanelClickCapture.bind(this);
 
       this._initTargets(target);
       this.triggerOrigin = this.targetEls[0] || null;
@@ -430,23 +435,50 @@
       }
     }
 
+    _isSheet() {
+      return this.options.presentation === 'sheet';
+    }
+
+    _isDrawer() {
+      return this.options.presentation === 'drawer';
+    }
+
+    _isPanelPresentation() {
+      return this._isSheet() || this._isDrawer();
+    }
+
+    _isModalPresentation() {
+      return this._isPanelPresentation() && Boolean(this.options.backdrop);
+    }
+
+    _validateSide(side) {
+      if (side !== 'left' && side !== 'right') {
+        throw new TypeError(`PopMenu: invalid drawer side "${String(side)}". Use "left" or "right".`);
+      }
+      return side;
+    }
+
+    _normalizeCssLength(value) {
+      return typeof value === 'number' && Number.isFinite(value) ? `${value}px` : String(value);
+    }
+
     _getRole() {
       return this.options.role || (
-        this.options.presentation === 'sheet' && this.options.backdrop || this.options.customContent
+        this._isModalPresentation() || this.options.customContent
           ? 'dialog'
           : 'menu'
       );
     }
 
     _warnIncompatibleSheetOptions(options = {}) {
-      if (this._warnedSheetOptions || this.options.presentation !== 'sheet') return;
+      if (this._warnedSheetOptions || !this._isPanelPresentation()) return;
       const hasConflict = this.options.anchor === 'element' ||
         (this._placementExplicit && this.options.placement !== 'bottom-start') ||
         this.options.arrow;
       if (!hasConflict) return;
       this._warnedSheetOptions = true;
       if (typeof console !== 'undefined' && console.warn) {
-        console.warn('PopMenu: anchor, placement, and arrow options are ignored by sheet presentation.');
+        console.warn('PopMenu: anchor, placement, and arrow options are ignored by sheet and drawer presentations.');
       }
     }
 
@@ -483,6 +515,11 @@
       this.menuEl.addEventListener('animationend', this._onSheetAnimationDone);
       this.menuEl.addEventListener('animationcancel', this._onSheetAnimationCancel);
       this.menuEl.addEventListener('focusin', this._onSheetFocusIn);
+      this.menuEl.addEventListener('pointerdown', this._onSheetPointerDown);
+      this.menuEl.addEventListener('pointermove', this._onSheetPointerMove);
+      this.menuEl.addEventListener('pointerup', this._onSheetPointerUp);
+      this.menuEl.addEventListener('pointercancel', this._onSheetPointerCancel);
+      this.menuEl.addEventListener('click', this._onPanelClickCapture, true);
       this._updateMenuAttributes();
       this._renderContent();
       document.body.appendChild(this.menuEl);
@@ -491,7 +528,7 @@
 
     _syncPresentationElements() {
       if (!this.menuEl || typeof document === 'undefined') return;
-      const needsBackdrop = this.options.presentation === 'sheet' && this.options.backdrop;
+      const needsBackdrop = this._isPanelPresentation() && this.options.backdrop;
       if (needsBackdrop && !this.backdropEl) {
         this.backdropEl = document.createElement('div');
         this.backdropEl.className = 'pm-sheet-backdrop';
@@ -520,15 +557,23 @@
 
     _setPresentationVisibility(visible, closing = false) {
       if (!this.backdropEl) return;
-      const shown = visible && this.options.presentation === 'sheet' && this.options.backdrop;
+      const shown = visible && this._isPanelPresentation() && this.options.backdrop;
+      const wasShown = this.backdropEl.classList.contains('is-visible');
       this.backdropEl.style.display = shown || closing ? 'block' : 'none';
       this.backdropEl.setAttribute('aria-hidden', 'true');
-      this.backdropEl.classList.toggle('is-visible', shown);
+      if (shown && !wasShown) {
+        this.backdropEl.classList.remove('is-visible');
+        // Flush the hidden state so the opacity transition starts from 0 instead of snapping in.
+        void this.backdropEl.offsetWidth;
+        this.backdropEl.classList.add('is-visible');
+      } else {
+        this.backdropEl.classList.toggle('is-visible', shown);
+      }
       if (!this._sheetDrag) this.backdropEl.style.opacity = '';
     }
 
     _syncModalEffects() {
-      const activeModal = this.visible && this.options.presentation === 'sheet' && this.options.backdrop;
+      const activeModal = this.visible && this._isModalPresentation();
       const shouldLock = activeModal && this.options.scrollLock;
       const shouldInert = activeModal && this.options.inertBackground;
       if (shouldLock && !this._scrollLockAcquired) {
@@ -579,12 +624,22 @@
       if (!this.menuEl) return;
       const themeClass = this.options.theme && this.options.theme !== 'none' ? `theme-${this.options.theme}` : '';
       const layoutClass = this.options.customContent ? 'pm-layout-custom' : `pm-layout-${this.options.layout === 'grid' ? 'grid' : 'list'}`;
-      const sheet = this.options.presentation === 'sheet';
-      const showArrow = this.options.arrow && !sheet;
-      const classes = ['pop-menu', themeClass, layoutClass, showArrow ? 'has-arrow' : '', sheet ? 'pm-presentation-sheet' : '', this.options.className].filter(Boolean);
+      const sheet = this._isSheet();
+      const drawer = this._isDrawer();
+      const showArrow = this.options.arrow && !sheet && !drawer;
+      const classes = [
+        'pop-menu',
+        themeClass,
+        layoutClass,
+        showArrow ? 'has-arrow' : '',
+        sheet ? 'pm-presentation-sheet' : '',
+        drawer ? 'pm-presentation-drawer' : '',
+        drawer ? `pm-side-${this.options.side}` : '',
+        this.options.className
+      ].filter(Boolean);
       this.menuEl.className = classes.join(' ');
       this.menuEl.setAttribute('role', this._getRole());
-      if (sheet && this.options.backdrop) this.menuEl.setAttribute('aria-modal', 'true');
+      if (this._isModalPresentation()) this.menuEl.setAttribute('aria-modal', 'true');
       else this.menuEl.removeAttribute('aria-modal');
       if (this.options.ariaLabel) this.menuEl.setAttribute('aria-label', this.options.ariaLabel);
       else this.menuEl.removeAttribute('aria-label');
@@ -617,7 +672,7 @@
       });
       this.sheetHandleEl = null;
 
-      if (this.options.presentation === 'sheet') {
+      if (this._isSheet()) {
         this.sheetHandleEl = document.createElement('div');
         this.sheetHandleEl.className = `pm-sheet-handle${this.options.swipeToDismiss ? '' : ' is-close-only'}`;
         this.sheetHandleEl.setAttribute('role', 'button');
@@ -629,9 +684,6 @@
         this.sheetHandleEl.appendChild(handleBar);
         if (this.options.swipeToDismiss) {
           this.sheetHandleEl.addEventListener('pointerdown', this._onSheetPointerDown);
-          this.sheetHandleEl.addEventListener('pointermove', this._onSheetPointerMove);
-          this.sheetHandleEl.addEventListener('pointerup', this._onSheetPointerUp);
-          this.sheetHandleEl.addEventListener('pointercancel', this._onSheetPointerCancel);
         }
         this.menuEl.appendChild(this.sheetHandleEl);
       }
@@ -1029,50 +1081,119 @@
     }
 
     _onSheetPointerDown(e) {
-      if (this.options.presentation !== 'sheet' || !this.options.swipeToDismiss ||
+      if (!this._isPanelPresentation() || !this.options.swipeToDismiss ||
           (e.button != null && e.button !== 0)) return;
+      const isDrawer = this._isDrawer();
+      if (isDrawer && e.currentTarget !== this.menuEl) return;
+      if (!isDrawer && e.currentTarget !== this.sheetHandleEl) return;
+      if (isDrawer && isEditableTarget(e.target)) return;
       const now = e.timeStamp || Date.now();
       this._sheetDrag = {
         pointerId: e.pointerId,
+        axis: isDrawer ? 'x' : 'y',
+        side: isDrawer ? this.options.side : null,
+        captureEl: e.currentTarget,
         startX: e.clientX || 0,
-        startY: e.clientY,
+        startY: e.clientY || 0,
         startTime: now,
         lastX: e.clientX || 0,
-        lastY: e.clientY,
-        lastTime: now
+        lastY: e.clientY || 0,
+        lastTime: now,
+        velocity: 0,
+        distance: 0,
+        captured: false
       };
       this.menuEl.classList.add('is-dragging');
-      this.backdropEl && this.backdropEl.classList.add('is-dragging');
-      if (e.currentTarget.setPointerCapture) e.currentTarget.setPointerCapture(e.pointerId);
-      e.preventDefault();
-    }
-
-    _onSheetPointerMove(e) {
-      if (!this._sheetDrag || e.pointerId !== this._sheetDrag.pointerId) return;
-      const moveTime = e.timeStamp || Date.now();
-      const moveElapsed = Math.max(1, moveTime - this._sheetDrag.lastTime);
-      this._sheetDrag.velocity = (e.clientY - this._sheetDrag.lastY) / moveElapsed;
-      this._sheetDrag.lastTime = moveTime;
-      this._sheetDrag.lastY = e.clientY;
-      this._sheetDrag.lastX = e.clientX || 0;
-      const distance = Math.max(0, e.clientY - this._sheetDrag.startY);
-      this.menuEl.style.transform = `translateY(${distance}px)`;
-      if (this.backdropEl) {
-        const height = this.menuEl.getBoundingClientRect().height || window.innerHeight;
-        this.backdropEl.style.opacity = String(Math.max(0, 1 - distance / height));
+      if (this.backdropEl) this.backdropEl.classList.add('is-dragging');
+      if (!isDrawer) {
+        if (e.currentTarget.setPointerCapture) e.currentTarget.setPointerCapture(e.pointerId);
+        this._sheetDrag.captured = true;
+        e.preventDefault();
       }
     }
 
-    _onSheetPointerUp(e) {
-      if (!this._sheetDrag || e.pointerId !== this._sheetDrag.pointerId) return;
+    _onSheetPointerMove(e) {
       const drag = this._sheetDrag;
+      if (!drag || e.pointerId !== drag.pointerId) return;
+      const moveTime = e.timeStamp || Date.now();
+      const moveElapsed = Math.max(1, moveTime - drag.lastTime);
+      const x = e.clientX || 0;
+      const y = e.clientY || 0;
+      if (drag.axis === 'x') {
+        const current = drag.side === 'left' ? -x : x;
+        const previous = drag.side === 'left' ? -drag.lastX : drag.lastX;
+        drag.velocity = (current - previous) / moveElapsed;
+        const distance = Math.max(0, current - (drag.side === 'left' ? -drag.startX : drag.startX));
+        drag.distance = distance;
+        const horizontal = Math.abs(x - drag.startX);
+        const vertical = Math.abs(y - drag.startY);
+        if (horizontal > 8 && horizontal > vertical) {
+          this.menuEl.style.transform = `translateX(${drag.side === 'left' ? -distance : distance}px)`;
+          if (this.backdropEl) {
+            const width = this.menuEl.getBoundingClientRect().width || window.innerWidth;
+            this.backdropEl.style.opacity = String(Math.max(0, 1 - distance / width));
+          }
+          if (!drag.captured && drag.captureEl && drag.captureEl.setPointerCapture) {
+            drag.captureEl.setPointerCapture(drag.pointerId);
+            drag.captured = true;
+          }
+          if (e.cancelable !== false && typeof e.preventDefault === 'function') e.preventDefault();
+        } else if (!drag.captured) {
+          drag.distance = 0;
+          this.menuEl.style.transform = '';
+          if (this.backdropEl) this.backdropEl.style.opacity = '';
+        }
+      } else {
+        drag.velocity = (y - drag.lastY) / moveElapsed;
+        const distance = Math.max(0, y - drag.startY);
+        drag.distance = distance;
+        this.menuEl.style.transform = `translateY(${distance}px)`;
+        if (this.backdropEl) {
+          const height = this.menuEl.getBoundingClientRect().height || window.innerHeight;
+          this.backdropEl.style.opacity = String(Math.max(0, 1 - distance / height));
+        }
+      }
+      drag.lastTime = moveTime;
+      drag.lastX = x;
+      drag.lastY = y;
+    }
+
+    _onSheetPointerUp(e) {
+      const drag = this._sheetDrag;
+      if (!drag || e.pointerId !== drag.pointerId) return;
       const dx = (e.clientX || 0) - drag.startX;
-      const dy = e.clientY - drag.startY;
+      const dy = (e.clientY || 0) - drag.startY;
       const endTime = e.timeStamp || Date.now();
       const finalElapsed = endTime - drag.lastTime;
-      const velocity = finalElapsed > 0
-        ? (e.clientY - drag.lastY) / finalElapsed
-        : drag.velocity || 0;
+      let velocity = drag.velocity || 0;
+      if (finalElapsed > 0) {
+        if (drag.axis === 'x') {
+          const current = drag.side === 'left' ? -(e.clientX || 0) : (e.clientX || 0);
+          const previous = drag.side === 'left' ? -drag.lastX : drag.lastX;
+          velocity = (current - previous) / finalElapsed;
+        } else {
+          velocity = ((e.clientY || 0) - drag.lastY) / finalElapsed;
+        }
+      }
+      if (drag.axis === 'x' && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) {
+        this._suppressClickUntil = Date.now() + 400;
+      }
+
+      if (drag.axis === 'x') {
+        if (Math.abs(dy) > Math.abs(dx)) {
+          this._resetSheetDrag();
+          return;
+        }
+        const primary = drag.side === 'left' ? -dx : dx;
+        const width = this.menuEl.getBoundingClientRect().width || window.innerWidth;
+        const threshold = Math.max(72, width * (Number(this.options.dismissThreshold) || 0.25));
+        const dismissByDistance = primary >= threshold;
+        const dismissByVelocity = primary >= 24 && velocity >= (Number(this.options.dismissVelocity) || 0.5);
+        if (dismissByDistance || dismissByVelocity) this.hide({ restoreFocus: true });
+        else this._resetSheetDrag();
+        return;
+      }
+
       const height = this.menuEl.getBoundingClientRect().height || window.innerHeight;
       if (this.options.dismissDirection === 'vertical' && Math.abs(dx) > Math.abs(dy)) {
         this._resetSheetDrag();
@@ -1109,11 +1230,21 @@
       if (this._sheetDrag && e.pointerId === this._sheetDrag.pointerId) this._resetSheetDrag();
     }
 
+    _onPanelClickCapture(e) {
+      if (!this._suppressClickUntil) return;
+      const suppressed = Date.now() < this._suppressClickUntil;
+      this._suppressClickUntil = 0;
+      if (!suppressed) return;
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
     _resetSheetDrag() {
       const drag = this._sheetDrag;
-      if (drag && this.sheetHandleEl && this.sheetHandleEl.hasPointerCapture &&
-          this.sheetHandleEl.hasPointerCapture(drag.pointerId)) {
-        this.sheetHandleEl.releasePointerCapture(drag.pointerId);
+      const captureEl = drag && drag.captureEl;
+      if (drag && drag.captured && captureEl && captureEl.hasPointerCapture &&
+          captureEl.hasPointerCapture(drag.pointerId)) {
+        captureEl.releasePointerCapture(drag.pointerId);
       }
       this._sheetDrag = null;
       if (this.menuEl) {
@@ -1158,7 +1289,7 @@
     }
 
     _applyDetent() {
-      if (!this.menuEl || this.options.presentation !== 'sheet') return;
+      if (!this.menuEl || !this._isSheet()) return;
       const detents = this._getDetents();
       if (!detents.length) {
         this.currentDetent = 'content';
@@ -1193,7 +1324,7 @@
     }
 
     _onSheetFocusIn(e) {
-      if (this.options.presentation !== 'sheet' || !e.target || e.target === this.menuEl) return;
+      if (!this._isPanelPresentation() || !e.target || e.target === this.menuEl) return;
       if (typeof e.target.scrollIntoView === 'function') {
         e.target.scrollIntoView({ block: 'nearest' });
       }
@@ -1230,7 +1361,7 @@
 
     _reposition() {
       if (!this.menuEl || typeof window === 'undefined' || !this.visible) return;
-      if (this.options.presentation === 'sheet') {
+      if (this._isSheet()) {
         const viewport = window.visualViewport;
         if (viewport) {
           this.menuEl.style.setProperty('--pm-vv-height', `${viewport.height}px`);
@@ -1248,6 +1379,30 @@
         this.menuEl.style.maxHeight = 'calc(var(--pm-vv-height, 100dvh) - env(safe-area-inset-top, 0px) - 16px)';
         this.menuEl.style.overflowY = '';
         this._applyDetent();
+        this.currentFlipState = { flipX: false, flipY: false };
+        return;
+      }
+      if (this._isDrawer()) {
+        const side = this.options.side === 'right' ? 'right' : 'left';
+        this.menuEl.style.top = '0px';
+        this.menuEl.style.bottom = '0px';
+        this.menuEl.style.width = this.options.drawerWidth == null
+          ? 'var(--pm-drawer-width, 320px)'
+          : this._normalizeCssLength(this.options.drawerWidth);
+        this.menuEl.style.maxHeight = '';
+        this.menuEl.style.overflowY = '';
+        this.menuEl.style.removeProperty('--pm-vv-height');
+        this.menuEl.style.removeProperty('--pm-vv-offset-top');
+        this.menuEl.style.removeProperty('--pm-sheet-height');
+        if (side === 'left') {
+          this.menuEl.style.left = '0px';
+          this.menuEl.style.right = 'auto';
+        } else {
+          this.menuEl.style.right = '0px';
+          this.menuEl.style.left = 'auto';
+        }
+        this._appliedPopoverMaxHeight = null;
+        this._appliedPopoverOverflowY = null;
         this.currentFlipState = { flipX: false, flipY: false };
         return;
       }
@@ -1422,15 +1577,15 @@
       this._resetSheetDrag();
       const reduceMotion = typeof window !== 'undefined' && typeof window.matchMedia === 'function' &&
         window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      const animateSheet = this.options.presentation === 'sheet' && !reduceMotion;
+      const animatePanel = this._isPanelPresentation() && !reduceMotion;
       const backdropWasVisible = Boolean(this.backdropEl && this.backdropEl.classList.contains('is-visible'));
       this.visible = false;
       this._syncModalEffects();
       const restoreFocus = options.restoreFocus === true ||
-        (options.restoreFocus !== false && this.options.presentation === 'sheet' && this.options.backdrop);
+        (options.restoreFocus !== false && this._isModalPresentation());
       if (restoreFocus) this._restoreFocus();
       if (this.menuEl) {
-        if (animateSheet) {
+        if (animatePanel) {
           this.menuEl.classList.add('is-closing');
           if (this.options.syncHidden) this.menuEl.hidden = false;
         } else {
@@ -1441,14 +1596,18 @@
         }
         this.menuEl.setAttribute('aria-hidden', 'true');
       }
-      this._setPresentationVisibility(false, animateSheet);
+      this._setPresentationVisibility(false, animatePanel);
       this.focusedIndex = -1;
       this._writeExpanded(false);
       this._writeOpenClass(false);
       this._cancelLongPress();
       this._clearTypeAhead();
-      if (animateSheet) {
-        const sheetDuration = this._readCssDuration(this.menuEl, '--pm-sheet-out-duration', 220);
+      if (animatePanel) {
+        const sheetDuration = this._readCssDuration(
+          this.menuEl,
+          this._isDrawer() ? '--pm-drawer-out-duration' : '--pm-sheet-out-duration',
+          220
+        );
         const backdropDuration = this.backdropEl
           ? this._readCssDuration(this.backdropEl, '--pm-backdrop-fade-duration', 250)
           : 0;
@@ -1469,7 +1628,7 @@
         }, Math.max(sheetDuration, backdropDuration) + 100);
         this._sheetCloseTimer = closing.timer;
         this._checkClosingComplete(closing.token);
-      } else if (this.options.presentation === 'sheet') {
+      } else if (this._isPanelPresentation()) {
         this._closing = null;
         this._finishSheetClose();
       }
@@ -1492,7 +1651,8 @@
     }
 
     _onSheetAnimationDone(e) {
-      if (e.target !== this.menuEl || e.animationName !== 'pm-sheet-out' || !this._closing) return;
+      if (e.target !== this.menuEl || !this._closing ||
+          !['pm-sheet-out', 'pm-drawer-out-left', 'pm-drawer-out-right'].includes(e.animationName)) return;
       this._markClosingDone('sheet', this._closing.token);
     }
 
@@ -1609,21 +1769,24 @@
       const oldDelegate = this.options.delegate;
       const oldOpenClass = this.options.openClass;
       const oldPresentation = this.options.presentation;
+      const oldSide = this.options.side;
       const oldSwipeToDismiss = this.options.swipeToDismiss;
       const oldBackdrop = this.options.backdrop;
       const safePatch = Object.assign({}, patch);
       delete safePatch.items;
       delete safePatch.customContent;
       if (Object.prototype.hasOwnProperty.call(safePatch, 'detents')) this._validateDetents(safePatch.detents);
+      if (Object.prototype.hasOwnProperty.call(safePatch, 'side')) this._validateSide(safePatch.side);
       if (Object.prototype.hasOwnProperty.call(safePatch, 'placement')) this._placementExplicit = true;
       if (Object.prototype.hasOwnProperty.call(safePatch, 'hideOnScroll')) this._hideOnScrollExplicit = true;
       if (Object.prototype.hasOwnProperty.call(safePatch, 'hideOnResize')) this._hideOnResizeExplicit = true;
       if (safePatch.aria) safePatch.aria = Object.assign({}, this.options.aria, safePatch.aria);
       Object.assign(this.options, safePatch);
-      if (!this._hideOnScrollExplicit) this.options.hideOnScroll = this.options.presentation !== 'sheet';
-      if (!this._hideOnResizeExplicit) this.options.hideOnResize = this.options.presentation !== 'sheet';
+      if (!this._hideOnScrollExplicit) this.options.hideOnScroll = !this._isPanelPresentation();
+      if (!this._hideOnResizeExplicit) this.options.hideOnResize = !this._isPanelPresentation();
       this._warnIncompatibleSheetOptions(safePatch);
-      if (oldPresentation !== this.options.presentation || oldSwipeToDismiss !== this.options.swipeToDismiss ||
+      if (oldPresentation !== this.options.presentation || oldSide !== this.options.side ||
+          oldSwipeToDismiss !== this.options.swipeToDismiss ||
           oldBackdrop !== this.options.backdrop) this._resetSheetDrag();
       this._syncPresentationElements();
       if (Object.prototype.hasOwnProperty.call(safePatch, 'syncHidden') && this.menuEl) {
@@ -1671,6 +1834,11 @@
 
     _handleItemClick(item, e) {
       if (item.disabled) return;
+      if (this._suppressClickUntil) {
+        const suppressed = Date.now() < this._suppressClickUntil;
+        this._suppressClickUntil = 0;
+        if (suppressed) return;
+      }
       if (this.options.closeOnSelect) this.hide({ restoreFocus: true });
       if (typeof item.onClick === 'function') item.onClick.call(this, item, e, this);
       if (typeof this.options.onSelect === 'function') this.options.onSelect.call(this, item, e);
@@ -1708,8 +1876,8 @@
 
     _handleTabNavigation(e) {
       const role = this._getRole();
-      const modalSheet = this.options.presentation === 'sheet' && this.options.backdrop;
-      if (modalSheet) {
+      const modalPanel = this._isModalPresentation();
+      if (modalPanel) {
         let focusable = this._getFocusableElements(this.menuEl);
         const candidates = new Set([...focusable, ...this._getEnabledItems()]);
         if (this.sheetHandleEl) candidates.add(this.sheetHandleEl);
@@ -1789,7 +1957,8 @@
       }
       if (isEditableTarget(target)) return;
       if ((e.isComposing || e.keyCode === 229 || isComposing) && ['Enter', ' '].includes(e.key)) return;
-      if (!this.menuEl || this.options.customContent || this._getRole() === 'dialog') return;
+      if (!this.menuEl || this.options.customContent) return;
+      if (this._getRole() === 'dialog' && !this._isPanelPresentation()) return;
       const items = this._getEnabledItems();
       if (items.length === 0) return;
       const navigable = ['ArrowDown', 'ArrowUp', 'Home', 'End', 'Enter', ' '].includes(e.key) ||
@@ -1891,7 +2060,13 @@
         this.menuEl.removeEventListener('animationend', this._onSheetAnimationDone);
         this.menuEl.removeEventListener('animationcancel', this._onSheetAnimationCancel);
         this.menuEl.removeEventListener('focusin', this._onSheetFocusIn);
+        this.menuEl.removeEventListener('pointerdown', this._onSheetPointerDown);
+        this.menuEl.removeEventListener('pointermove', this._onSheetPointerMove);
+        this.menuEl.removeEventListener('pointerup', this._onSheetPointerUp);
+        this.menuEl.removeEventListener('pointercancel', this._onSheetPointerCancel);
+        this.menuEl.removeEventListener('click', this._onPanelClickCapture, true);
       }
+      this._suppressClickUntil = 0;
       if (this.backdropEl) {
         this.backdropEl.removeEventListener('transitionend', this._onBackdropTransitionDone);
         this.backdropEl.removeEventListener('transitioncancel', this._onBackdropTransitionCancel);

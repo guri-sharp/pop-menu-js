@@ -1,11 +1,13 @@
 /* ==========================================================================
-   PopMenu JS - Base Stylesheet v3.1.2
+   PopMenu JS - Base Stylesheet v3.2.0
    ========================================================================== */
 
 :root {
   --pm-sheet-out-duration: 220ms;
+  --pm-drawer-out-duration: 220ms;
   --pm-backdrop-fade-duration: 250ms;
   --pm-sheet-height: auto;
+  --pm-drawer-width: 320px;
   --pm-vv-height: 100dvh;
 }
 
@@ -126,6 +128,107 @@
 }
 
 .pop-menu.pm-presentation-sheet.is-dragging {
+  transition: none;
+}
+
+.pop-menu.pm-presentation-drawer {
+  top: 0;
+  bottom: 0;
+  width: var(--pm-drawer-width, 320px);
+  min-width: 0;
+  height: auto;
+  max-width: 100vw;
+  max-height: none;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  padding-top: max(6px, env(safe-area-inset-top, 0px));
+  animation: pm-drawer-in-left 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: transform 0.18s ease-out, opacity 0.18s ease-out;
+}
+
+.pop-menu.pm-presentation-drawer::-webkit-scrollbar {
+  display: none;
+}
+
+.pop-menu.pm-presentation-drawer.pm-side-left {
+  left: 0;
+  right: auto;
+  border-radius: 0;
+  border-left: 0;
+  padding-left: max(6px, env(safe-area-inset-left, 0px));
+  padding-bottom: max(12px, env(safe-area-inset-bottom, 0px));
+}
+
+.pop-menu.pm-presentation-drawer.pm-side-right {
+  right: 0;
+  left: auto;
+  border-radius: 0;
+  border-right: 0;
+  padding-right: max(6px, env(safe-area-inset-right, 0px));
+  padding-bottom: max(12px, env(safe-area-inset-bottom, 0px));
+  animation-name: pm-drawer-in-right;
+}
+
+@keyframes pm-drawer-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes pm-drawer-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes pm-drawer-out-left {
+  from {
+    opacity: 1;
+    transform: var(--pm-sheet-out-from, translateX(0));
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-100%);
+  }
+}
+
+@keyframes pm-drawer-out-right {
+  from {
+    opacity: 1;
+    transform: var(--pm-sheet-out-from, translateX(0));
+  }
+  to {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+}
+
+.pop-menu.pm-presentation-drawer.is-closing {
+  animation-name: pm-drawer-out-left;
+  animation-duration: var(--pm-drawer-out-duration, 220ms);
+  animation-timing-function: cubic-bezier(0.32, 0, 0.67, 0);
+  animation-fill-mode: forwards;
+  pointer-events: none;
+}
+
+.pop-menu.pm-presentation-drawer.pm-side-right.is-closing {
+  animation-name: pm-drawer-out-right;
+}
+
+.pop-menu.pm-presentation-drawer.is-dragging {
   transition: none;
 }
 

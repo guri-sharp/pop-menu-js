@@ -23,7 +23,7 @@
 - ♿ **アクセシビリティ対応**: WAI-ARIA 属性やキーボード操作（`↑`/`↓`/`←`/`→`/`Escape`）に対応。
 - 🔎 **type-ahead と RTL**: 文字入力でメニュー項目を検索し、`dir="rtl"` に合わせて配置とグリッド操作を反転。
 - 🏷️ **宣言的利用**: データ属性と `<template>` からメニューを作り、`autoInit()` で委譲初期化。
-- 📱 **ボトムシート**: 背景オーバーレイとドラッグハンドル付きのシート表示を選択可能。
+- 📱 **ボトムシート / サイドドロワー**: 背景オーバーレイ付きのシート表示と、左右どちらからでも開けるスライドパネルを選択可能。
 
 ---
 
@@ -88,10 +88,12 @@ new PopMenu('#color-btn', {
 | `items` | `Array<Object>` | `[]` | メニュー項目の配列 |
 | `layout` | `'list'` \| `'grid'` | `'list'` | 表示レイアウト |
 | `columns` | `number` | `3` | グリッドレイアウト時の列数 |
-| `presentation` | `'popover'` \| `'sheet'` | `'popover'` | 表示形式。`sheet` は画面下部に固定 |
-| `backdrop` | `boolean` | `true` | `sheet` 表示時に背景オーバーレイを表示 |
-| `swipeToDismiss` | `boolean` | `true` | `sheet` のドラッグハンドルを下へスワイプして閉じる |
-| `scrollLock` / `inertBackground` | `boolean` | `true` | `sheet` + backdrop 時に背景をスクロール・操作不可にする |
+| `presentation` | `'popover'` \| `'sheet'` \| `'drawer'` | `'popover'` | 表示形式。`sheet` は画面下部、`drawer` は画面左右に固定 |
+| `side` | `'left'` \| `'right'` | `'left'` | `drawer` を開く側 |
+| `drawerWidth` | `number` \| `string` \| `null` | `null` | `drawer` の幅。数値は px、文字列は CSS 長さ。省略時は `--pm-drawer-width`（既定 `320px`） |
+| `backdrop` | `boolean` | `true` | `sheet` / `drawer` 表示時に背景オーバーレイを表示 |
+| `swipeToDismiss` | `boolean` | `true` | `sheet` はハンドルを下へ、`drawer` はパネルを外側へスワイプして閉じる |
+| `scrollLock` / `inertBackground` | `boolean` | `true` | `sheet` / `drawer` + backdrop 時に背景をスクロール・操作不可にする |
 | `sheetLabel` | `string` | `'閉じる'` | キーボード操作可能なシートハンドルのラベル |
 | `detents` | `Array<'content' \| 'half' \| 'full' \| number>` | `['content']` | シートの高さ候補。数値はビューポート高に対する割合 |
 | `defaultDetent` | `string \| number` | `'content'` | シート表示時のデテント |
@@ -115,7 +117,7 @@ new PopMenu('#color-btn', {
 | `toggle` | `boolean` | `false` | 同じトリガーを再操作したときに閉じる |
 | `preventDefaultTrigger` | `boolean` | `true` | click トリガーの既定動作を抑止 |
 | `followScroll` / `followResize` | `boolean` | `false` | `hideOnScroll` / `hideOnResize` を `false` にした場合に追従 |
-| `hideOnScroll` / `hideOnResize` | `boolean` | popover: `true`, sheet: `false` | スクロール／リサイズ時に閉じる（追従より優先）。sheet は明示指定時のみ閉じる |
+| `hideOnScroll` / `hideOnResize` | `boolean` | popover: `true`, sheet/drawer: `false` | スクロール／リサイズ時に閉じる（追従より優先）。sheet / drawer は明示指定時のみ閉じる |
 | `closeOnSelect` / `closeOnOutsideClick` / `closeOnEscape` | `boolean` | `true` | 各操作時にメニューを閉じる |
 | `openClass` | `string` | `''` | 表示中にターゲットへ付けるクラス |
 | `syncHidden` | `boolean` | `false` | `menuEl.hidden` を表示状態に同期 |
@@ -123,7 +125,7 @@ new PopMenu('#color-btn', {
 | `arrowOffset` | `number` \| `null` | `null` | 矢印の水平位置（px） |
 | `aria` | `object` | `{ haspopup: 'menu', controls: null, expanded: true }` | トリガーに付与する ARIA 属性を制御 |
 | `ariaLabel` | `string` | `''` | メニューの `aria-label` |
-| `role` | `string` \| `null` | `null` | 未指定時は通常 items が `menu`、customContent と backdrop 付き sheet が `dialog` |
+| `role` | `string` \| `null` | `null` | 未指定時は通常 items が `menu`、customContent と backdrop 付き sheet / drawer が `dialog` |
 | `emptyText` | `string` | `''` | 有効な項目がない場合に表示する文言 |
 | `onBeforeShow` | `Function` \| `null` | `null` | 表示直前に呼び出すフック |
 
@@ -222,6 +224,25 @@ new PopMenu('#share', {
 
 アニメーションと高さは `--pm-sheet-out-duration`、`--pm-backdrop-fade-duration`、`--pm-sheet-height`、`--pm-vv-height` の CSS 変数で調整できます。
 
+### サイドドロワー
+
+```javascript
+new PopMenu('#navigation', {
+  trigger: 'click',
+  presentation: 'drawer',
+  side: 'right',
+  backdrop: true,
+  swipeToDismiss: true,
+  items: [{ label: 'ホーム' }, { label: '設定' }]
+});
+```
+
+`presentation: 'drawer'` は `side: 'left' | 'right'` で開く側を指定できます。既定は `'left'` です。`backdrop`, `scrollLock`, `inertBackground`, `swipeToDismiss`, `closeOnEscape` はボトムシートと同じように動作し、backdrop 付きの drawer はモーダルダイアログとしてフォーカスを閉じ込め、背景を `inert` 化します。表示時は指定した側から横にスライドし、閉じる時は同じ側へスライドします。`swipeToDismiss: true` ではパネルを外側へドラッグすると閉じ、内側へのドラッグや縦スクロールでは閉じません。幅は `drawerWidth` または `--pm-drawer-width` で変更できます。`pm-sheet-backdrop` は drawer でも共用されます。`items` を使う場合は矢印キーで移動し、Enter / Space で選択できます。
+
+`detents` は sheet 専用です。`anchor`, `placement`, `autoFlip`, `offset`, `viewportPadding`, `boundary`, `arrow` は drawer では配置に使われません。競合する `anchor`, `placement`, `arrow` の明示指定には警告が出ます。
+
+ドロワーの角は丸めず、画面端に沿った直角になります（`border-radius` を CSS で上書きすれば変更できます）。開くときは 0.3 秒でスライドインし、背景も同時にフェードインします。閉じるときは `--pm-drawer-out-duration`（既定 220ms）でスライドアウトし、背景は `--pm-backdrop-fade-duration`（既定 250ms）でフェードアウトします。スワイプを離して閉じなかった場合は 0.18 秒で元の位置に戻ります。`prefers-reduced-motion: reduce` の環境ではアニメーションを抑えます。
+
 menu 表示中に文字を入力すると、有効項目のラベルを先頭一致で検索します。連続した同じ文字は候補を順送りし、入力バッファは500ms後にリセットされます。`document.dir === 'rtl'` の場合は `-start` / `-end` の配置とグリッドの左右キーを反転します。
 
 `setItems()` は `customContent` を変更しません。表示中の項目を更新する場合は、フォーカス維持に使う安定した `id` を各項目に指定してください。カスタム内容と項目表示の切り替えは `setCustomContent()` で行ってください。`theme: 'none'` ではテーマクラスを付けず、`.pop-menu` 上の `--pm-*` CSS 変数を利用できます。
@@ -245,7 +266,7 @@ Right-click, click, and long-press triggers are supported, along with custom con
 - **Accessibility:** Synchronize trigger ARIA attributes, navigate menu items with the keyboard, and restore trigger attributes on `destroy()`.
 - **Type-ahead and RTL:** Find menu items by typing; placement alignment and grid arrow navigation follow the document direction.
 - **Declarative setup:** Initialize delegated triggers and `<template>` items from data attributes with `PopMenu.autoInit()`.
-- **Bottom sheets:** Opt in to a fixed bottom panel with a backdrop and swipe-to-dismiss handle.
+- **Bottom sheets and side drawers:** Opt in to a fixed bottom panel or a left/right edge panel with a backdrop, modal behavior, and swipe-to-dismiss gestures.
 - **No runtime dependencies:** Use the library directly from its JavaScript and CSS files.
 
 ---
@@ -319,10 +340,12 @@ menu.show();
 | `items` | `Array<Object>` | `[]` | Menu item definitions. |
 | `layout` | `'list'` \| `'grid'` | `'list'` | Item layout. |
 | `columns` | `number` | `3` | Number of columns for a grid layout. |
-| `presentation` | `'popover'` \| `'sheet'` | `'popover'` | Presentation style. `'sheet'` pins the panel to the bottom of the viewport. |
-| `backdrop` | `boolean` | `true` | Show a backdrop for sheet presentation. |
-| `swipeToDismiss` | `boolean` | `true` | Allow dismissing a sheet by dragging its handle downward. |
-| `scrollLock` / `inertBackground` | `boolean` | `true` | Lock background scrolling and interaction for a sheet with a backdrop. |
+| `presentation` | `'popover'` \| `'sheet'` \| `'drawer'` | `'popover'` | Presentation style. `'sheet'` pins the panel to the bottom; `'drawer'` pins it to the left or right edge. |
+| `side` | `'left'` \| `'right'` | `'left'` | Edge used by the drawer presentation. |
+| `drawerWidth` | `number` \| `string` \| `null` | `null` | Drawer width. Numbers are pixels; strings are CSS lengths. Defaults to `--pm-drawer-width` (`320px`). |
+| `backdrop` | `boolean` | `true` | Show a backdrop for sheet and drawer presentations. |
+| `swipeToDismiss` | `boolean` | `true` | Dismiss a sheet by dragging its handle down, or a drawer by dragging the panel outward. |
+| `scrollLock` / `inertBackground` | `boolean` | `true` | Lock background scrolling and interaction for a sheet or drawer with a backdrop. |
 | `sheetLabel` | `string` | `'閉じる'` | Accessible label for the keyboard-focusable sheet handle. |
 | `detents` | `Array<'content' \| 'half' \| 'full' \| number>` | `['content']` | Sheet heights; numeric values are percentages of viewport height. |
 | `defaultDetent` | `string \| number` | `'content'` | Detent selected when the sheet opens. |
@@ -343,7 +366,7 @@ menu.show();
 | `boundary` | `Element` \| `null` | `null` | Positioning boundary. Defaults to the viewport. |
 | `toggle` | `boolean` | `false` | Close the menu when its open trigger is activated again. |
 | `preventDefaultTrigger` | `boolean` | `true` | Prevent the default action for a `click` trigger. `contextmenu` is always prevented. |
-| `hideOnScroll` / `hideOnResize` | `boolean` | popover: `true`, sheet: `false` | Close on scroll or resize. Sheets stay open by default; explicit values are respected. |
+| `hideOnScroll` / `hideOnResize` | `boolean` | popover: `true`, sheet/drawer: `false` | Close on scroll or resize. Sheets and drawers stay open by default; explicit values are respected. |
 | `followScroll` / `followResize` | `boolean` | `false` | Reposition while scrolling or resizing when the corresponding hide option is disabled. |
 | `openClass` | `string` | `''` | Class added to the active trigger while the menu is open. |
 | `syncHidden` | `boolean` | `false` | Synchronize `menuEl.hidden` with the menu visibility. |
@@ -355,7 +378,7 @@ menu.show();
 | `zIndex` | `number` | `999999` | Popup stacking order. |
 | `aria` | `object` | `{ haspopup: 'menu', controls: null, expanded: true }` | Configure ARIA attributes managed on the trigger. Existing `aria-controls` values are preserved. |
 | `ariaLabel` | `string` | `''` | Accessible label applied to the popup. |
-| `role` | `string` \| `null` | `null` | Defaults to `menu` for regular items and `dialog` for custom content or a sheet with a backdrop. |
+| `role` | `string` \| `null` | `null` | Defaults to `menu` for regular items and `dialog` for custom content or a sheet or drawer with a backdrop. |
 | `emptyText` | `string` | `''` | Message shown when there are no enabled items. |
 | `onBeforeShow` | `Function` \| `null` | `null` | Called immediately before the menu opens. |
 | `onShow` / `onHide` / `onSelect` | `Function` \| `null` | `null` | Lifecycle and item-selection callbacks. |
@@ -415,6 +438,25 @@ The sheet presentation is opt-in and does not change the existing popover presen
 Sheets with a backdrop lock page scrolling, make background content inert, and use modal dialog semantics. The keyboard-focusable handle closes the sheet with Enter or Space. Set `detents: ['half', 'full']` to enable drag snapping; numeric detents represent viewport-height percentages. Visual viewport changes, including the on-screen keyboard, reposition the sheet. Positioning options (`anchor`, `placement`, `autoFlip`, `offset`, `viewportPadding`, `boundary`, and `arrow`) do not affect sheets. Explicit conflicting `anchor`, `placement`, or `arrow` values produce a warning.
 
 Customize motion and sizing with the `--pm-sheet-out-duration`, `--pm-backdrop-fade-duration`, `--pm-sheet-height`, and `--pm-vv-height` CSS variables.
+
+### Side Drawers
+
+```javascript
+new PopMenu('#navigation', {
+  trigger: 'click',
+  presentation: 'drawer',
+  side: 'right',
+  backdrop: true,
+  swipeToDismiss: true,
+  items: [{ label: 'Home' }, { label: 'Settings' }]
+});
+```
+
+`presentation: 'drawer'` uses `side: 'left' | 'right'` to choose the edge; the default is `'left'`. `backdrop`, `scrollLock`, `inertBackground`, `swipeToDismiss`, and `closeOnEscape` behave like they do for bottom sheets. A drawer with a backdrop traps focus, makes the background inert, and uses modal dialog semantics. It slides in from the chosen edge and slides back out when closing. With `swipeToDismiss: true`, dragging the panel outward closes it, while inward drags and vertical scrolling do not. Set the width with `drawerWidth` or `--pm-drawer-width`. Drawers share the `pm-sheet-backdrop` element. Item-based drawers support arrow-key navigation and Enter/Space activation.
+
+`detents` apply only to sheets. `anchor`, `placement`, `autoFlip`, `offset`, `viewportPadding`, `boundary`, and `arrow` do not position drawers. Explicit conflicting `anchor`, `placement`, or `arrow` values produce a warning.
+
+Drawers have square corners flush with the viewport edge; override `border-radius` in CSS if you need rounded ones. Opening slides the panel in over 0.3 s while the backdrop fades in. Closing slides it out over `--pm-drawer-out-duration` (220 ms by default) while the backdrop fades out using `--pm-backdrop-fade-duration` (250 ms by default). A swipe that does not dismiss springs back over 0.18 s. Animations are reduced when `prefers-reduced-motion: reduce` is enabled.
 
 While a menu is open, typing searches enabled labels by prefix. Repeating a character cycles through matching items, and the search buffer resets after 500 ms. When `document.dir` is `rtl`, `-start` / `-end` placement and horizontal grid-key navigation are reversed.
 

@@ -1,5 +1,14 @@
 # Changelog
 
+## 3.2.0
+
+- Added a `drawer` presentation that slides in from the left or right edge, configured with `side` and `drawerWidth`.
+- Reused the sheet backdrop, modal semantics, focus trapping, scroll locking, inert background handling, and coordinated close animation for drawers.
+- Added horizontal swipe-to-dismiss for drawers; inward and vertical drags are ignored.
+- Enabled arrow-key navigation and Enter/Space activation for item-based sheets and drawers.
+- Drawers use square corners flush with the viewport edge.
+- Fade in the backdrop when a sheet or drawer opens instead of showing it immediately.
+
 ## 3.1.2
 
 - Fixed bottom sheets returning to their original position before closing after a swipe.
