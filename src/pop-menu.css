@@ -1,5 +1,5 @@
 /* ==========================================================================
-   PopMenu JS - Base Stylesheet v3.1.1
+   PopMenu JS - Base Stylesheet v3.1.2
    ========================================================================== */
 
 :root {
@@ -112,7 +112,7 @@
 @keyframes pm-sheet-out {
   from {
     opacity: 1;
-    transform: translateY(0);
+    transform: var(--pm-sheet-out-from, translateY(0));
   }
   to {
     opacity: 0;

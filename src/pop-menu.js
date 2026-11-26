@@ -1,5 +1,5 @@
 /**
- * PopMenu JS v3.1.1
+ * PopMenu JS v3.1.2
  * Lightweight, accessible, multi-trigger custom context menu with element positioning.
  */
 (function (global, factory) {
@@ -998,6 +998,7 @@
         this._sheetCloseTimer = null;
       }
       this.menuEl.classList.remove('is-closing');
+      this.menuEl.style.removeProperty('--pm-sheet-out-from');
       if (this.options.anchor === 'pointer' && typeof x === 'number' && typeof y === 'number') {
         this.lastPosition = { x, y };
       }
@@ -1073,14 +1074,17 @@
         ? (e.clientY - drag.lastY) / finalElapsed
         : drag.velocity || 0;
       const height = this.menuEl.getBoundingClientRect().height || window.innerHeight;
-      this._resetSheetDrag();
-      if (this.options.dismissDirection === 'vertical' && Math.abs(dx) > Math.abs(dy)) return;
+      if (this.options.dismissDirection === 'vertical' && Math.abs(dx) > Math.abs(dy)) {
+        this._resetSheetDrag();
+        return;
+      }
       const threshold = Math.max(72, height * (Number(this.options.dismissThreshold) || 0.25));
       const dismissByDistance = dy >= threshold;
       const dismissByVelocity = dy >= 24 && velocity >= (Number(this.options.dismissVelocity) || 0.5);
       const detents = this._getSortedDetents();
       if (detents.length <= 1) {
         if (dismissByDistance || dismissByVelocity) this.hide({ restoreFocus: true });
+        else this._resetSheetDrag();
         return;
       }
 
@@ -1094,6 +1098,7 @@
         this.hide({ restoreFocus: true });
         return;
       }
+      this._resetSheetDrag();
       const nearest = detents.reduce((best, detent) =>
         Math.abs(detent.height - targetHeight) < Math.abs(best.height - targetHeight) ? detent : best
       );
@@ -1411,6 +1416,9 @@
 
     hide(options = {}) {
       if (!this.visible) return;
+      if (this._sheetDrag && this.menuEl.style.transform) {
+        this.menuEl.style.setProperty('--pm-sheet-out-from', this.menuEl.style.transform);
+      }
       this._resetSheetDrag();
       const reduceMotion = typeof window !== 'undefined' && typeof window.matchMedia === 'function' &&
         window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -1428,6 +1436,7 @@
         } else {
           this.menuEl.style.display = 'none';
           this.menuEl.classList.remove('is-closing');
+          this.menuEl.style.removeProperty('--pm-sheet-out-from');
           if (this.options.syncHidden) this.menuEl.hidden = true;
         }
         this.menuEl.setAttribute('aria-hidden', 'true');
@@ -1527,6 +1536,7 @@
       if (this.visible) return;
       this.menuEl.style.display = 'none';
       this.menuEl.classList.remove('is-closing');
+      this.menuEl.style.removeProperty('--pm-sheet-out-from');
       if (this.options.syncHidden) this.menuEl.hidden = true;
       this._setPresentationVisibility(false);
     }

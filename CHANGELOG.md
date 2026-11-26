@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.1.2
+
+- Fixed bottom sheets returning to their original position before closing after a swipe.
+
 ## 3.1.1
 
 - Prevented popovers from flashing at the top-left before their anchor position is applied.
