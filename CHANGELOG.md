@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Added a showcase demo site that displays each sample next to the code that runs it.
+
 ## 3.2.0
 
 - Added a `drawer` presentation that slides in from the left or right edge, configured with `side` and `drawerWidth`.
